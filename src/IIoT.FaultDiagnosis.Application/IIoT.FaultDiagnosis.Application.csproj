@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../IIoT.FaultDiagnosis.Domain/IIoT.FaultDiagnosis.Domain.csproj" />
+    <ProjectReference Include="../IIoT.FaultDiagnosis.Protocols/IIoT.FaultDiagnosis.Protocols.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+  </ItemGroup>
+</Project>
+

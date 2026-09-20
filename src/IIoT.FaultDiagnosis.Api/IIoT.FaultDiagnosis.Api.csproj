@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../IIoT.FaultDiagnosis.Application/IIoT.FaultDiagnosis.Application.csproj" />
+    <ProjectReference Include="../IIoT.FaultDiagnosis.Infrastructure/IIoT.FaultDiagnosis.Infrastructure.csproj" />
+    <ProjectReference Include="../IIoT.FaultDiagnosis.Protocols/IIoT.FaultDiagnosis.Protocols.csproj" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0" />
+  </ItemGroup>
+</Project>
