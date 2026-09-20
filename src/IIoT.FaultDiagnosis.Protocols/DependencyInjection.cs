@@ -1,5 +1,6 @@
 using IIoT.FaultDiagnosis.Protocols.Abstractions;
 using IIoT.FaultDiagnosis.Protocols.Modbus;
+using IIoT.FaultDiagnosis.Protocols.Mqtt;
 using IIoT.FaultDiagnosis.Protocols.OpcUa;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,8 +12,10 @@ public static class DependencyInjection
     {
         services.AddScoped<IModbusProtocolAdapter, ModbusProtocolAdapter>();
         services.AddScoped<IOpcUaProtocolAdapter, OpcUaProtocolAdapter>();
+        services.AddScoped<IMqttProtocolAdapter, MqttProtocolAdapter>();
         services.AddScoped<IProtocolAdapter>(serviceProvider => serviceProvider.GetRequiredService<IModbusProtocolAdapter>());
         services.AddScoped<IProtocolAdapter>(serviceProvider => serviceProvider.GetRequiredService<IOpcUaProtocolAdapter>());
+        services.AddScoped<IProtocolAdapter>(serviceProvider => serviceProvider.GetRequiredService<IMqttProtocolAdapter>());
         return services;
     }
 }

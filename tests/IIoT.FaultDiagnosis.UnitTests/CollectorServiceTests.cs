@@ -105,6 +105,29 @@ public sealed class CollectorServiceTests
     }
 
     [Fact]
+    public async Task CollectEnabledDevicesAsync_UsesMqttAdapterForMqttDevice()
+    {
+        var device = CreateDevice(isEnabled: true, ProtocolType.Mqtt);
+        var records = new InMemoryCommunicationRecordRepository();
+        var adapter = new SuccessMqttAdapter();
+        var service = new CollectorService(
+            new InMemoryDeviceRepository(device),
+            records,
+            [adapter],
+            Options.Create(new CollectorOptions { MaxRetry = 0 }),
+            TimeProvider.System,
+            NullLogger<CollectorService>.Instance);
+
+        var result = Assert.Single(await service.CollectEnabledDevicesAsync(CollectorExecutionContext.None, CancellationToken.None));
+
+        Assert.True(result.Success);
+        Assert.Equal(1, adapter.ConnectCalls);
+        Assert.Equal(1, adapter.CollectCalls);
+        Assert.Equal(1, adapter.DisconnectCalls);
+        Assert.Equal(ProtocolType.Mqtt, Assert.Single(records.Records).ProtocolType);
+    }
+
+    [Fact]
     public void CollectorExecutionContext_RequiresExperimentAndRunTogether()
     {
         var context = new CollectorExecutionContext(Guid.NewGuid(), null);
@@ -226,6 +249,32 @@ public sealed class CollectorServiceTests
         {
             CollectCalls++;
             return Task.FromResult(new CollectionResult(true, FaultType.None, null, null, "NodeId=i=2258", "42", "42"));
+        }
+
+        public Task DisconnectAsync(Device device, CancellationToken cancellationToken)
+        {
+            DisconnectCalls++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SuccessMqttAdapter : IProtocolAdapter
+    {
+        public int ConnectCalls { get; private set; }
+        public int CollectCalls { get; private set; }
+        public int DisconnectCalls { get; private set; }
+        public ProtocolType ProtocolType => ProtocolType.Mqtt;
+
+        public Task<ConnectionResult> ConnectAsync(Device device, CancellationToken cancellationToken)
+        {
+            ConnectCalls++;
+            return Task.FromResult(ConnectionResult.Connected());
+        }
+
+        public Task<CollectionResult> CollectAsync(Device device, CancellationToken cancellationToken)
+        {
+            CollectCalls++;
+            return Task.FromResult(new CollectionResult(true, FaultType.None, null, null, "Topic=factory/machine01/data", "{}", "{}"));
         }
 
         public Task DisconnectAsync(Device device, CancellationToken cancellationToken)

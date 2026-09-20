@@ -2,6 +2,7 @@ using IIoT.FaultDiagnosis.Api.Contracts.Devices;
 using IIoT.FaultDiagnosis.Application.Communication;
 using IIoT.FaultDiagnosis.Application.Devices;
 using IIoT.FaultDiagnosis.Protocols.Modbus;
+using IIoT.FaultDiagnosis.Protocols.Mqtt;
 using IIoT.FaultDiagnosis.Protocols.OpcUa;
 using Microsoft.AspNetCore.Mvc;
 
@@ -92,6 +93,30 @@ public sealed class DevicesController(IDeviceService deviceService, IDeviceConne
         var result = await deviceConnectionService.TestOpcUaAsync(
             id,
             new OpcUaConfiguration(endpoint, request.NodeIds, UseSecurity: request.UseSecurity, OperationTimeoutMs: request.OperationTimeoutMs),
+            cancellationToken);
+
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/test-mqtt")]
+    [ProducesResponseType(typeof(DeviceConnectionTestResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DeviceConnectionTestResult>> TestMqttConnection(
+        Guid id,
+        [FromBody] TestMqttConnectionRequest? request,
+        CancellationToken cancellationToken)
+    {
+        request ??= new TestMqttConnectionRequest();
+        var result = await deviceConnectionService.TestMqttAsync(
+            id,
+            new MqttConfiguration(
+                request.Topic,
+                request.QualityOfService,
+                request.ReceiveTimeoutMs,
+                request.ReconnectDelayMs,
+                request.RequireJsonPayload,
+                request.Username,
+                request.Password),
             cancellationToken);
 
         return result is null ? NotFound() : Ok(result);

@@ -4,6 +4,7 @@ using IIoT.FaultDiagnosis.Domain.Entities;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using IIoT.FaultDiagnosis.Protocols.Abstractions;
 using IIoT.FaultDiagnosis.Protocols.Modbus;
+using IIoT.FaultDiagnosis.Protocols.Mqtt;
 using IIoT.FaultDiagnosis.Protocols.OpcUa;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,7 @@ public sealed class DeviceConnectionService(
     ICommunicationRecordRepository communicationRecordRepository,
     IModbusProtocolAdapter modbusAdapter,
     IOpcUaProtocolAdapter opcUaAdapter,
+    IMqttProtocolAdapter mqttAdapter,
     TimeProvider timeProvider,
     ILogger<DeviceConnectionService> logger) : IDeviceConnectionService
 {
@@ -50,6 +52,24 @@ public sealed class DeviceConnectionService(
             (device, token) => opcUaAdapter.CollectAsync(device, configuration, token),
             $"NodeId={configuration.NodeIds[0]}",
             (device, token) => opcUaAdapter.ConnectAsync(device, configuration, token),
+            cancellationToken);
+    }
+
+    public async Task<DeviceConnectionTestResult?> TestMqttAsync(
+        Guid deviceId,
+        MqttConfiguration configuration,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        configuration.Validate();
+
+        return await TestAsync(
+            deviceId,
+            ProtocolType.Mqtt,
+            mqttAdapter,
+            (device, token) => mqttAdapter.CollectAsync(device, configuration, token),
+            $"Topic={configuration.Topic};QoS={configuration.QualityOfService}",
+            (device, token) => mqttAdapter.ConnectAsync(device, configuration, token),
             cancellationToken);
     }
 

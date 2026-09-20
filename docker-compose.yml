@@ -24,6 +24,12 @@ services:
       - "127.0.0.1:5341:5341"
     volumes:
       - seq-data:/data
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 volumes:
   postgres-data:
   seq-data:
