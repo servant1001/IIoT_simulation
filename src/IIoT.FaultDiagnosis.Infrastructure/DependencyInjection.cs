@@ -3,6 +3,7 @@ using IIoT.FaultDiagnosis.Application.Communication;
 using IIoT.FaultDiagnosis.Application.Metrics;
 using IIoT.FaultDiagnosis.Application.Experiments;
 using IIoT.FaultDiagnosis.Application.Diagnosis;
+using IIoT.FaultDiagnosis.Application.Datasets;
 using IIoT.FaultDiagnosis.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IMetricRepository, MetricRepository>();
         services.AddScoped<IExperimentRepository, ExperimentRepository>();
         services.AddScoped<IDiagnosisRepository, DiagnosisRepository>();
+        services.AddScoped<IDatasetRepository, DatasetRepository>();
         return services;
     }
 }

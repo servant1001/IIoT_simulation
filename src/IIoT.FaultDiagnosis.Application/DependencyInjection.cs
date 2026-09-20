@@ -4,6 +4,7 @@ using IIoT.FaultDiagnosis.Application.Collection;
 using IIoT.FaultDiagnosis.Application.Metrics;
 using IIoT.FaultDiagnosis.Application.Experiments;
 using IIoT.FaultDiagnosis.Application.Diagnosis;
+using IIoT.FaultDiagnosis.Application.Datasets;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<IFaultRule>(new FaultTypeRule(FaultType.IllegalAddress, "The requested register address is not supported.", "Confirm the Modbus register map."));
         services.AddSingleton<IFaultDiagnosisEngine, RuleBasedFaultDiagnosisEngine>();
         services.AddScoped<IDiagnosisService, DiagnosisService>();
+        services.AddScoped<IDatasetService, DatasetService>();
         return services;
     }
 }

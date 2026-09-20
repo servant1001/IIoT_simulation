@@ -2,7 +2,7 @@
 
 用於建立與驗證工業物聯網（IIoT）通訊異常的本機研究平台。專案以虛擬設備取代實體 PLC，蒐集 Modbus TCP、OPC UA 與 MQTT 的正常及異常通訊紀錄，提供實驗執行、CSV 匯出與規則式故障診斷，作為後續 Dataset、Machine Learning 與 LLM/RAG 研究的資料基礎。
 
-原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 7**；後續階段尚未開始。
+原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 8 的資料集功能**；Phase 8 的每種故障至少 100 runs 資料收集仍待完成。Machine Learning 與後續研究階段尚未開始。
 
 ## 專案進度
 
@@ -16,7 +16,8 @@
 | Phase 5 | 已完成 | Rule-based 診斷與評估 |
 | Phase 6 | 已完成 | OPC UA Adapter 與 Prosys 驗證 |
 | Phase 7 | 已完成 | MQTT Adapter、Mosquitto、QoS 訂閱與重連 |
-| Phase 8 之後 | 尚未開始 | Dataset、Machine Learning、LLM/RAG |
+| Phase 8 | 功能已完成，資料收集待完成 | 正式 Dataset 匯出、Ground Truth／預測分離、覆蓋率統計 |
+| Phase 9 之後 | 尚未開始 | Machine Learning、LLM/RAG |
 
 ## 已完成功能
 
@@ -30,6 +31,7 @@
 | Diagnosis | Rule-based 診斷、診斷結果保存與實驗評估 |
 | OPC UA | Session 管理、多 Node 讀取、斷線後重連、錯誤正規化與 Prosys 外部驗證 |
 | MQTT | Mosquitto Broker、QoS 訂閱、JSON payload 保存、斷線重連與錯誤正規化 |
+| Dataset | 正式 Experiment 通訊紀錄匯出、Ground Truth／Prediction 分欄與 Run 覆蓋率統計 |
 
 ## 架構
 
@@ -161,6 +163,8 @@ Invoke-WebRequest http://127.0.0.1:5080/health
 | `GET` | `/api/experiments/{id}/export` | 匯出 CSV |
 | `POST` | `/api/communication-records/{id}/diagnose` | 執行規則式診斷 |
 | `GET` | `/api/experiments/{id}/diagnosis-evaluation` | 查詢診斷評估 |
+| `GET` | `/api/datasets/communication-records/export` | 匯出正式資料集 CSV |
+| `GET` | `/api/datasets/communication-records/summary` | 查詢各協定／Ground Truth 的覆蓋率 |
 
 `protocolType` 目前 API 使用數字列舉：`1` 為 `ModbusTcp`、`2` 為 `OpcUa`、`3` 為 `Mqtt`。
 
@@ -271,13 +275,45 @@ POST /api/devices/{id}/test-mqtt
 
 實驗會建立對應協定的設備設定、在背景執行指定次數，並保存每筆通訊的 response time、status、fault type、原始請求／回應、解析值與 retry count。每一個 Run 都會保存成功／失敗數、延遲統計與系統資源平均值。
 
-`actual_fault_type` 是實驗 Ground Truth，`predicted_fault_type` 是診斷結果，兩者分開保存。CSV 匯出可作為後續 Dataset 建立的輸入。
+`actual_fault_type` 是實驗 Ground Truth，`predicted_fault_type` 是診斷結果，兩者分開保存；預測結果不會回寫或取代 Ground Truth。
 
 目前規則式診斷覆蓋：
 
 - `ConnectionRefused`
 - `Timeout`
 - `IllegalAddress`
+
+## 正式 Dataset
+
+使用 Dataset API 匯出時，系統只納入具備 `experiment_id` 的通訊紀錄；由單次裝置連線測試所產生、沒有實驗 Ground Truth 的紀錄不會混入研究資料集。每一列包含實驗與 Run 識別、協定、`actual_fault_type`、`predicted_fault_type`、診斷方法與信心度，以及延遲、狀態、觀測錯誤、retry 與原始通訊資料。
+
+```text
+GET /api/datasets/communication-records/export
+GET /api/datasets/communication-records/export?protocolType=3&actualFaultType=BrokerUnavailable&onlyDiagnosed=true
+GET /api/datasets/communication-records/summary?minimumRunsPerFault=100
+```
+
+`summary` 以不同的 `experiment_run_id` 計算 Run 數，同時回傳 `recordCount`、`diagnosedRecordCount` 與 `remainingRunCount`。正式驗收目標為每個 Protocol／ActualFaultType 組合至少 100 個 runs；資料收集程序與欄位說明見 [docs/Dataset.md](docs/Dataset.md)。
+
+### 匯出與檢查覆蓋率
+
+API 啟動後，可用 PowerShell 匯出 CSV 並檢查收集進度：
+
+```powershell
+New-Item -ItemType Directory -Force artifacts | Out-Null
+Invoke-WebRequest http://127.0.0.1:5080/api/datasets/communication-records/export -OutFile artifacts/iiot-fault-dataset.csv
+Invoke-RestMethod 'http://127.0.0.1:5080/api/datasets/communication-records/summary?minimumRunsPerFault=100' | ConvertTo-Json -Depth 5
+```
+
+匯出端點支援下列篩選條件：
+
+| Query parameter | 用途 | 範例 |
+| --- | --- | --- |
+| `protocolType` | 僅匯出指定協定；`1` Modbus TCP、`2` OPC UA、`3` MQTT | `protocolType=3` |
+| `actualFaultType` | 僅匯出指定 Ground Truth FaultType | `actualFaultType=Timeout` |
+| `onlyDiagnosed` | 僅匯出已有診斷預測的紀錄 | `onlyDiagnosed=true` |
+
+覆蓋率回應中的每個 `coverage` 項目代表一個 Protocol／Ground Truth 組合：`runCount` 為不同 Experiment Run 的數量，`recordCount` 為其通訊紀錄總數，`diagnosedRecordCount` 為已有 `predicted_fault_type` 的紀錄數，`remainingRunCount` 為距離 `minimumRunsPerFault` 的差額。當所有目標組合的 `remainingRunCount` 都為 `0`，即可匯出正式訓練資料。
 
 ## 建置與測試
 
@@ -286,14 +322,14 @@ dotnet build IIoT.FaultDiagnosis.sln
 dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.csproj
 ```
 
-目前 Unit Tests 包含 Domain、Modbus、OPC UA、MQTT 設定與錯誤分類、不可用 Broker、Collector protocol routing、retry、metrics 與 diagnosis。
+目前 Unit Tests 包含 Domain、Modbus、OPC UA、MQTT 設定與錯誤分類、不可用 Broker、Collector protocol routing、retry、metrics、diagnosis 與 Dataset 標籤／覆蓋率。
 
 完整 Integration Tests 需要 PostgreSQL 與外部 Modbus TCP Simulator。若 `127.0.0.1:502` 未提供符合測試預期的 Modbus Server，Phase 4 的正常與 Illegal Address 情境會失敗；這不會影響單元測試、OPC UA 或 MQTT 驗收。
 
 ## 已驗證項目
 
 - `dotnet build IIoT.FaultDiagnosis.sln --no-restore` 成功，0 warnings、0 errors。
-- Unit Tests 43/43 通過。
+- Unit Tests 46/46 通過。
 - PostgreSQL、Seq、API health check 與 Seq 日誌接收已驗證。
 - Prosys OPC UA Simulation Server 已驗證正常讀取、無效 NodeId、無效 Endpoint、Server 重啟後 Session 重連，以及安全端點拒絕未受信任用戶端憑證時的 `CertificateError`。
 - 獨立 TCP listener 在接受連線後不回覆 OPC UA 封包，已驗證回傳 `BadRequestTimeout` 時正規化為 `Timeout`。
@@ -303,8 +339,11 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 尚未開始的階段
 
-- Phase 8：Dataset
 - Phase 9：Machine Learning
 - Phase 10 及後續研究功能
 
 本 README 僅描述目前已完成的功能，不代表後續 Phase 已實作。
+
+## 待完成的資料收集
+
+目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`。
