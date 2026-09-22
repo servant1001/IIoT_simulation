@@ -2,7 +2,7 @@
 
 用於建立與驗證工業物聯網（IIoT）通訊異常的本機研究平台。專案以虛擬設備取代實體 PLC，蒐集 Modbus TCP、OPC UA 與 MQTT 的正常及異常通訊紀錄，提供實驗執行、CSV 匯出與規則式故障診斷，作為後續 Dataset、Machine Learning 與 LLM/RAG 研究的資料基礎。
 
-原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 8 的資料集功能**；Phase 8 的每種故障至少 100 runs 資料收集仍待完成。Machine Learning 與後續研究階段尚未開始。
+原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 9 的資料集與 ML pipeline 功能**；Phase 8 的每種故障至少 100 runs 資料收集與 Phase 9 正式模型評估仍待完成。
 
 ## 專案進度
 
@@ -17,7 +17,8 @@
 | Phase 6 | 已完成 | OPC UA Adapter 與 Prosys 驗證 |
 | Phase 7 | 已完成 | MQTT Adapter、Mosquitto、QoS 訂閱與重連 |
 | Phase 8 | 功能已完成，資料收集待完成 | 正式 Dataset 匯出、Ground Truth／預測分離、覆蓋率統計 |
-| Phase 9 之後 | 尚未開始 | Machine Learning、LLM/RAG |
+| Phase 9 | 功能已完成，正式訓練待完成 | Docker Python/Jupyter、前處理、Run-aware split、模型比較與評估 |
+| Phase 10 之後 | 尚未開始 | LLM/RAG |
 
 ## 已完成功能
 
@@ -32,6 +33,7 @@
 | OPC UA | Session 管理、多 Node 讀取、斷線後重連、錯誤正規化與 Prosys 外部驗證 |
 | MQTT | Mosquitto Broker、QoS 訂閱、JSON payload 保存、斷線重連與錯誤正規化 |
 | Dataset | 正式 Experiment 通訊紀錄匯出、Ground Truth／Prediction 分欄與 Run 覆蓋率統計 |
+| Machine Learning | Docker Python/Jupyter、Logistic Regression、Random Forest、SVM、Train／Validation／Test 與分類指標 |
 
 ## 架構
 
@@ -42,6 +44,7 @@ IIoT.FaultDiagnosis.Protocols       Modbus TCP、OPC UA 與 MQTT Adapter
 IIoT.FaultDiagnosis.Infrastructure  EF Core、PostgreSQL、Repository 實作
 IIoT.FaultDiagnosis.Api             ASP.NET Core Web API
 IIoT.FaultDiagnosis.Worker          背景 Collector Worker
+ml/                                  Python ML pipeline、Jupyter Notebook 與 Docker 環境
 tests/                               Unit 與 PostgreSQL-backed Integration Tests
 ```
 
@@ -315,6 +318,58 @@ Invoke-RestMethod 'http://127.0.0.1:5080/api/datasets/communication-records/summ
 
 覆蓋率回應中的每個 `coverage` 項目代表一個 Protocol／Ground Truth 組合：`runCount` 為不同 Experiment Run 的數量，`recordCount` 為其通訊紀錄總數，`diagnosedRecordCount` 為已有 `predicted_fault_type` 的紀錄數，`remainingRunCount` 為距離 `minimumRunsPerFault` 的差額。當所有目標組合的 `remainingRunCount` 都為 `0`，即可匯出正式訓練資料。
 
+## Machine Learning Pipeline
+
+Phase 9 以 [ml/train.py](ml/train.py) 建立可重複執行的 Python pipeline，並透過 Docker 提供 JupyterLab 環境，因此不需要在 Windows 另行安裝 Python。
+
+```mermaid
+flowchart LR
+    A[Experiment<br/>ActualFaultType] --> B[Phase 8 Dataset CSV]
+    B --> C[資料品質檢查<br/>每類至少 100 runs]
+    C --> D[依 Experiment Run 切分<br/>Train / Validation / Test]
+    D --> E[前處理與模型訓練]
+    E --> F[Metrics / Confusion Matrix<br/>Model artifacts]
+```
+
+```powershell
+docker compose --profile ml build ml-lab
+docker compose --profile ml up ml-lab
+```
+
+啟動後可開啟 <http://127.0.0.1:8888/lab/tree/ml/notebooks/phase9_pipeline.ipynb>。訓練時，先匯出正式 Dataset，再執行：
+
+```powershell
+docker compose --profile ml run --rm ml-lab python ml/train.py --input artifacts/iiot-fault-dataset.csv --output ml/outputs/phase9
+```
+
+Pipeline 只以 `actual_fault_type` 作為標籤；`predicted_fault_type`、Experiment ID、Device ID 與 Record ID 都不會成為特徵。資料會以完整 `experiment_run_id` 切分 Train／Validation／Test，避免同一 Run 資料洩漏到不同集合。輸出包含每個模型的 Accuracy、weighted Precision／Recall／F1、分類報告、Confusion Matrix、`leaderboard.csv` 與可重用的 `.joblib` 模型。
+
+預設每個 Ground Truth 類別需有至少 100 個不同 runs；資料不足時，pipeline 會停止並說明缺少的類別。`--allow-small-dataset` 只能用於流程驗證，產物會標示為 exploratory，不能作為正式研究結果。完整操作見 [ml/README.md](ml/README.md)。
+
+### 正式訓練前檢查
+
+開始訓練前，依序確認下列事項：
+
+1. Dataset summary 中每個目標組合的 `remainingRunCount` 都是 `0`。
+2. CSV 的 `actual_fault_type` 含有預定的 Ground Truth 類別，且每類至少有 100 個不同 `experiment_run_id`。
+3. CSV 來源為 Dataset export API，而不是單次 Device test 所產生的紀錄。
+4. `predicted_fault_type` 僅保留作後續診斷比較，沒有被當成模型的輸入或標籤。
+
+### 模型輸出與判讀
+
+| 檔案 | 用途 |
+| --- | --- |
+| `leaderboard.csv` | 依 validation weighted F1 排序的模型比較表；用來選擇候選模型。 |
+| `metrics.json` | 每個模型的 Validation／Test Accuracy、weighted Precision、Recall、F1 與分類報告。 |
+| `{model}_confusion_matrix.png` | 顯示各 FaultType 容易被錯分為哪個類別。 |
+| `{model}.joblib` | 包含前處理器與分類器的可重用模型；需搭配相同版本 Python 相依套件。 |
+
+應以 Test metrics 作為最終模型評估，Validation metrics 用於比較與選擇模型。若某 FaultType 的 Test 樣本很少，應先補足資料再解讀指標，而不是只依整體 Accuracy 下結論。
+
+### Jupyter 與命令列
+
+Jupyter Notebook 適合檢視 Dataset、執行訓練與閱讀 `leaderboard.csv`；命令列適合重複執行相同參數的研究實驗。兩者都呼叫同一個 `ml/train.py`，因此輸出格式與資料檢核規則一致。
+
 ## 建置與測試
 
 ```powershell
@@ -336,14 +391,14 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 - Mosquitto 已驗證 QoS 1 訂閱、JSON payload 解析與 PostgreSQL `communication_records` 保存。
 - Mosquitto 重啟期間已驗證 MQTT adapter 重新連線、重新訂閱並成功接收訊息。
 - 需帳密的隔離 Mosquitto 已驗證錯誤密碼回傳 `NotAuthorized` 時正規化為 `AuthenticationFailed`；非 JSON 訊息已驗證正規化為 `PayloadInvalid`。
+- ML Docker image 已成功建置，並以隔離的 pipeline smoke Dataset 驗證 Logistic Regression、Random Forest、SVM 訓練、metrics、confusion matrix 與模型輸出。
 
 ## 尚未開始的階段
 
-- Phase 9：Machine Learning
 - Phase 10 及後續研究功能
 
 本 README 僅描述目前已完成的功能，不代表後續 Phase 已實作。
 
 ## 待完成的資料收集
 
-目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`。
+目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`，再執行 Phase 9 正式訓練與模型評估。

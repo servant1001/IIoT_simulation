@@ -6,3 +6,5 @@ logs/
 .env
 **/appsettings.Local.json
 .tools/
+artifacts/
+ml/outputs/
