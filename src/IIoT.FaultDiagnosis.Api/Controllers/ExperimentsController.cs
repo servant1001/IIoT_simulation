@@ -1,13 +1,14 @@
 using IIoT.FaultDiagnosis.Api.Contracts.Experiments;
 using IIoT.FaultDiagnosis.Application.Experiments;
 using IIoT.FaultDiagnosis.Application.Diagnosis;
+using IIoT.FaultDiagnosis.Application.Rag;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IIoT.FaultDiagnosis.Api.Controllers;
 
 [ApiController]
 [Route("api/experiments")]
-public sealed class ExperimentsController(IExperimentService experimentService, IDiagnosisService diagnosisService) : ControllerBase
+public sealed class ExperimentsController(IExperimentService experimentService, IDiagnosisService diagnosisService, IRagDiagnosisService ragDiagnosisService) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType(typeof(ExperimentDto), StatusCodes.Status201Created)]
@@ -46,4 +47,7 @@ public sealed class ExperimentsController(IExperimentService experimentService, 
 
     [HttpGet("{id:guid}/diagnosis-evaluation")]
     public async Task<IActionResult> DiagnosisEvaluation(Guid id, CancellationToken cancellationToken) => (await diagnosisService.GetEvaluationAsync(id, cancellationToken)) is { } result ? Ok(result) : NotFound();
+
+    [HttpGet("{id:guid}/rag-evaluation")]
+    public async Task<IActionResult> RagEvaluation(Guid id, CancellationToken cancellationToken) => (await ragDiagnosisService.GetEvaluationAsync(id, cancellationToken)) is { } result ? Ok(result) : NotFound();
 }

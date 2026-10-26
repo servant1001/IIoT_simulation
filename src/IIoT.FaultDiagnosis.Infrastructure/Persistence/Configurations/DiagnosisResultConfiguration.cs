@@ -24,5 +24,9 @@ internal sealed class DiagnosisResultConfiguration : IEntityTypeConfiguration<Di
             .WithMany(record => record.DiagnosisResults)
             .HasForeignKey(result => result.CommunicationRecordId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(result => result.RagDiagnosisTrace)
+            .WithOne(trace => trace.DiagnosisResult)
+            .HasForeignKey<RagDiagnosisTrace>(trace => trace.DiagnosisResultId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

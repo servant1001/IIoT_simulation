@@ -5,6 +5,7 @@ using IIoT.FaultDiagnosis.Application.Metrics;
 using IIoT.FaultDiagnosis.Application.Experiments;
 using IIoT.FaultDiagnosis.Application.Diagnosis;
 using IIoT.FaultDiagnosis.Application.Datasets;
+using IIoT.FaultDiagnosis.Application.Rag;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,8 @@ public static class DependencyInjection
         services.AddSingleton<IFaultDiagnosisEngine, RuleBasedFaultDiagnosisEngine>();
         services.AddScoped<IDiagnosisService, DiagnosisService>();
         services.AddScoped<IDatasetService, DatasetService>();
+        services.AddSingleton<IRagKnowledgeBase, RagKnowledgeBase>();
+        services.AddScoped<IRagDiagnosisService, RagDiagnosisService>();
         return services;
     }
 }

@@ -348,6 +348,50 @@ namespace IIoT.FaultDiagnosis.Infrastructure.Migrations
                     b.ToTable("experiment_runs", (string)null);
                 });
 
+            modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.RagDiagnosisTrace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CandidateFaultTypes")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("candidate_fault_types");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DiagnosisResultId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("diagnosis_result_id");
+
+                    b.Property<string>("HistoricalCaseIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("historical_case_ids");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SourceIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("source_ids");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DiagnosisResultId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rag_diagnosis_traces_result_id");
+
+                    b.ToTable("rag_diagnosis_traces", (string)null);
+                });
+
             modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.SystemMetric", b =>
                 {
                     b.Property<Guid>("Id")
@@ -440,6 +484,17 @@ namespace IIoT.FaultDiagnosis.Infrastructure.Migrations
                     b.Navigation("Experiment");
                 });
 
+            modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.RagDiagnosisTrace", b =>
+                {
+                    b.HasOne("IIoT.FaultDiagnosis.Domain.Entities.DiagnosisResult", "DiagnosisResult")
+                        .WithOne("RagDiagnosisTrace")
+                        .HasForeignKey("IIoT.FaultDiagnosis.Domain.Entities.RagDiagnosisTrace", "DiagnosisResultId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DiagnosisResult");
+                });
+
             modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.SystemMetric", b =>
                 {
                     b.HasOne("IIoT.FaultDiagnosis.Domain.Entities.ExperimentRun", "ExperimentRun")
@@ -453,6 +508,11 @@ namespace IIoT.FaultDiagnosis.Infrastructure.Migrations
             modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.CommunicationRecord", b =>
                 {
                     b.Navigation("DiagnosisResults");
+                });
+
+            modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.DiagnosisResult", b =>
+                {
+                    b.Navigation("RagDiagnosisTrace");
                 });
 
             modelBuilder.Entity("IIoT.FaultDiagnosis.Domain.Entities.Experiment", b =>

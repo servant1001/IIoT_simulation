@@ -2,7 +2,7 @@
 
 用於建立與驗證工業物聯網（IIoT）通訊異常的本機研究平台。專案以虛擬設備取代實體 PLC，蒐集 Modbus TCP、OPC UA 與 MQTT 的正常及異常通訊紀錄，提供實驗執行、CSV 匯出與規則式故障診斷，作為後續 Dataset、Machine Learning 與 LLM/RAG 研究的資料基礎。
 
-原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 9 的資料集與 ML pipeline 功能**；Phase 8 的每種故障至少 100 runs 資料收集與 Phase 9 正式模型評估仍待完成。
+原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 10 的資料集、ML pipeline 與本機 RAG 功能**；Phase 8 的每種故障至少 100 runs 資料收集與正式模型／RAG 評估仍待完成。
 
 ## 專案進度
 
@@ -18,7 +18,7 @@
 | Phase 7 | 已完成 | MQTT Adapter、Mosquitto、QoS 訂閱與重連 |
 | Phase 8 | 功能已完成，資料收集待完成 | 正式 Dataset 匯出、Ground Truth／預測分離、覆蓋率統計 |
 | Phase 9 | 功能已完成，正式訓練待完成 | Docker Python/Jupyter、前處理、Run-aware split、模型比較與評估 |
-| Phase 10 之後 | 尚未開始 | LLM/RAG |
+| Phase 10 | 本機 RAG 已完成，外部 LLM 選用 | 本機 RAG、知識來源、歷史案例、Top-1／Top-3 評估 |
 
 ## 已完成功能
 
@@ -34,6 +34,7 @@
 | MQTT | Mosquitto Broker、QoS 訂閱、JSON payload 保存、斷線重連與錯誤正規化 |
 | Dataset | 正式 Experiment 通訊紀錄匯出、Ground Truth／Prediction 分欄與 Run 覆蓋率統計 |
 | Machine Learning | Docker Python/Jupyter、Logistic Regression、Random Forest、SVM、Train／Validation／Test 與分類指標 |
+| LLM / RAG | 本機知識檢索、歷史通訊案例、結構化診斷、來源引用與 Top-1／Top-3 評估 |
 
 ## 架構
 
@@ -165,7 +166,9 @@ Invoke-WebRequest http://127.0.0.1:5080/health
 | `GET` | `/api/experiments/{id}/records` | 查詢通訊紀錄 |
 | `GET` | `/api/experiments/{id}/export` | 匯出 CSV |
 | `POST` | `/api/communication-records/{id}/diagnose` | 執行規則式診斷 |
+| `POST` | `/api/communication-records/{id}/rag-diagnose` | 執行 Retrieval-Augmented 診斷 |
 | `GET` | `/api/experiments/{id}/diagnosis-evaluation` | 查詢診斷評估 |
+| `GET` | `/api/experiments/{id}/rag-evaluation` | 查詢 RAG Top-1／Top-3 與平均診斷時間 |
 | `GET` | `/api/datasets/communication-records/export` | 匯出正式資料集 CSV |
 | `GET` | `/api/datasets/communication-records/summary` | 查詢各協定／Ground Truth 的覆蓋率 |
 
@@ -370,6 +373,26 @@ Pipeline 只以 `actual_fault_type` 作為標籤；`predicted_fault_type`、Expe
 
 Jupyter Notebook 適合檢視 Dataset、執行訓練與閱讀 `leaderboard.csv`；命令列適合重複執行相同參數的研究實驗。兩者都呼叫同一個 `ml/train.py`，因此輸出格式與資料檢核規則一致。
 
+## LLM / RAG Diagnosis
+
+Phase 10 提供可離線執行的 Retrieval-Augmented Diagnosis。它以通訊紀錄的 `protocol`、裝置 Host／Port、`error_code`、`error_message`、response time、retry count 與相同協定的歷史通訊案例檢索本機知識庫，回傳結構化診斷結果：
+
+```text
+POST /api/communication-records/{recordId}/rag-diagnose
+```
+
+回應包含 `predictedFaultType`、最多三個 `candidateFaultTypes`、`possibleCauses`、`suggestedActions`、`sources`、`historicalCases` 與 `diagnosisDurationMs`。每次執行會建立 `DiagnosisMethod.Rag` 診斷結果，並在 `rag_diagnosis_traces` 保存候選類別、知識來源與歷史案例識別，供後續審查與評估。
+
+RAG 不讀取 Experiment 的 `actual_fault_type` 作為輸入，也不會修改 Ground Truth。實驗完成一批 RAG 診斷後，可查詢：
+
+```text
+GET /api/experiments/{experimentId}/rag-evaluation
+```
+
+回應包含 Top-1 Accuracy、Top-3 Accuracy 與 Average Diagnosis Duration。Explanation Quality 與 Hallucination Rate 需以研究者人工審閱具引用來源的 RAG 回應後評估；詳見 [docs/Rag.md](docs/Rag.md)。
+
+本版預設使用本機 curated knowledge base，因此不會自動把通訊內容傳送到外部 LLM。若要串接外部 LLM，應另行管理 API 金鑰、傳輸範圍、模型版本與資料保留政策，並保留相同的來源引用與 Ground Truth 隔離原則。
+
 ## 建置與測試
 
 ```powershell
@@ -392,13 +415,11 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 - Mosquitto 重啟期間已驗證 MQTT adapter 重新連線、重新訂閱並成功接收訊息。
 - 需帳密的隔離 Mosquitto 已驗證錯誤密碼回傳 `NotAuthorized` 時正規化為 `AuthenticationFailed`；非 JSON 訊息已驗證正規化為 `PayloadInvalid`。
 - ML Docker image 已成功建置，並以隔離的 pipeline smoke Dataset 驗證 Logistic Regression、Random Forest、SVM 訓練、metrics、confusion matrix 與模型輸出。
+- RAG 知識檢索、結構化診斷、trace 保存與 Ground Truth 隔離已由 Unit Tests 驗證。
+- Phase 10 migration 已套用至 PostgreSQL；實際 Modbus 通訊紀錄已驗證 RAG 診斷、三個候選 FaultType、三筆歷史案例、三個引用來源、trace 保存與實驗 RAG 評估端點。
 
-## 尚未開始的階段
-
-- Phase 10 及後續研究功能
-
-本 README 僅描述目前已完成的功能，不代表後續 Phase 已實作。
+本 README 僅描述目前已完成的功能，不代表研究資料或外部服務驗收已完成。
 
 ## 待完成的資料收集
 
-目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`，再執行 Phase 9 正式訓練與模型評估。
+目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`，再執行 Phase 9 正式訓練與 Phase 10 RAG 評估。

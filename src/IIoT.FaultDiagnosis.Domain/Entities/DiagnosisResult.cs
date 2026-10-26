@@ -21,4 +21,5 @@ public sealed class DiagnosisResult
     public DateTimeOffset CreatedAt { get; private set; }
 
     public CommunicationRecord CommunicationRecord { get; private set; } = null!;
+    public RagDiagnosisTrace? RagDiagnosisTrace { get; private set; }
 }

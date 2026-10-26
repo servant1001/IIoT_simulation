@@ -11,6 +11,7 @@ public sealed class FaultDiagnosisDbContext(DbContextOptions<FaultDiagnosisDbCon
     public DbSet<CommunicationRecord> CommunicationRecords => Set<CommunicationRecord>();
     public DbSet<SystemMetric> SystemMetrics => Set<SystemMetric>();
     public DbSet<DiagnosisResult> DiagnosisResults => Set<DiagnosisResult>();
+    public DbSet<RagDiagnosisTrace> RagDiagnosisTraces => Set<RagDiagnosisTrace>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
