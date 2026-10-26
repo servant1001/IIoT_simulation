@@ -4,6 +4,10 @@
 
 原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 10 的資料集、ML pipeline 與本機 RAG 功能**；Phase 8 的每種故障至少 100 runs 資料收集與正式模型／RAG 評估仍待完成。
 
+若要將本專案用於碩士在職專班書審，請參考 [docs/GraduateApplicationPortfolio.md](docs/GraduateApplicationPortfolio.md) 的摘要、研究問題、技術特色與展示建議。
+
+正式資料收集的 Simulator 情境、Experiment 操作步驟與自動化腳本請見 [docs/ExperimentCollectionGuide.md](docs/ExperimentCollectionGuide.md)。
+
 ## 專案進度
 
 | 階段 | 狀態 | 內容 |
@@ -90,6 +94,7 @@ docker compose ps
 | Seq UI | <http://127.0.0.1:8081> |
 | Seq ingestion | `http://127.0.0.1:5341` |
 | Mosquitto MQTT Broker | `127.0.0.1:1883` |
+| Modbus TCP Simulator | `127.0.0.1:1502` |
 
 停止服務可執行 `docker compose down`；named volumes 會保留資料。
 

@@ -5,22 +5,36 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Xunit;
 
 namespace IIoT.FaultDiagnosis.IntegrationTests;
 
-public sealed class PostgresWebApplicationFactory : WebApplicationFactory<Program>
+public sealed class PostgresWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    private readonly string _connectionString = TestConnectionString.Load();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting(WebHostDefaults.EnvironmentKey, Environments.Development);
-        var connectionString = TestConnectionString.Load();
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<FaultDiagnosisDbContext>();
             services.RemoveAll<DbContextOptions<FaultDiagnosisDbContext>>();
-            services.AddDbContext<FaultDiagnosisDbContext>(options => options.UseNpgsql(connectionString));
+            services.AddDbContext<FaultDiagnosisDbContext>(options => options.UseNpgsql(_connectionString));
         });
     }
+
+    public async Task InitializeAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<FaultDiagnosisDbContext>();
+
+        // The integration database is disposable and is never the local experiment database.
+        await dbContext.Database.EnsureDeletedAsync();
+        await dbContext.Database.MigrateAsync();
+    }
+
+    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
 
 internal static class TestConnectionString
@@ -33,7 +47,7 @@ internal static class TestConnectionString
             .Where(parts => parts.Length == 2)
             .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
 
-        return $"Host=127.0.0.1;Port=5432;Database={values["POSTGRES_DB"]};Username={values["POSTGRES_USER"]};Password={values["POSTGRES_PASSWORD"]}";
+        return $"Host=127.0.0.1;Port=5432;Database={values["POSTGRES_DB"]}_integration_tests;Username={values["POSTGRES_USER"]};Password={values["POSTGRES_PASSWORD"]}";
     }
 
     private static string FindEnvironmentFile()

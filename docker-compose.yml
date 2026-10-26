@@ -30,6 +30,11 @@ services:
       - "127.0.0.1:1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  modbus-simulator:
+    build:
+      context: ./modbus-simulator
+    ports:
+      - "127.0.0.1:1502:502"
   ml-lab:
     build:
       context: ./ml
