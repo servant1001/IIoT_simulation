@@ -427,4 +427,4 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前 Dataset summary 的 4 個 Modbus Ground Truth 組合分別有 5、4、4、4 個 runs，距離每組 100 runs 尚缺 95、96、96、96 個。請依 [docs/Dataset.md](docs/Dataset.md) 啟動對應外部模擬器故障情境並執行 Experiment；完成後再查詢 Dataset summary 確認所有 `remainingRunCount` 為 `0`，再執行 Phase 9 正式訓練與 Phase 10 RAG 評估。
+目前 Modbus 的 `None`、`ConnectionRefused`、`Timeout`、`IllegalAddress` 均已完成至少 100 個正式 Run；其餘 OPC UA、MQTT 情境仍待蒐集。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)。請依 [docs/Dataset.md](docs/Dataset.md) 持續蒐集其他協定的故障情境，再執行跨協定訓練與 Phase 10 RAG 評估。

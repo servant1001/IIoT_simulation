@@ -30,6 +30,19 @@ services:
       - "127.0.0.1:1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  mqtt-json-publisher:
+    image: eclipse-mosquitto:2
+    profiles: ["mqtt-simulators"]
+    depends_on:
+      - mosquitto
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          mosquitto_pub -h mosquitto -t factory/machine01/data -q 1 -m '{"temperature":25.0,"pressure":101.3,"rpm":1500}';
+          sleep 0.5;
+        done
   modbus-simulator:
     build:
       context: ./modbus-simulator

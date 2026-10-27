@@ -64,6 +64,12 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 
 MQTT Experiment 使用預設 topic `factory/machine01/data`、QoS 1、JSON payload 驗證。正常情境需要 Publisher 在整個 Experiment 期間持續發布，例如每 0.5 至 1 秒一筆。Payload Invalid 情境則對同一 topic 發送純文字。
 
+啟動 MQTT 正常情境 Publisher：
+
+```powershell
+docker compose --profile mqtt-simulators up -d mqtt-json-publisher
+```
+
 啟動 Modbus Timeout 與 Illegal Address Simulator：
 
 ```powershell
