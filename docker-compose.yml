@@ -42,6 +42,13 @@ services:
     profiles: ["fault-simulators"]
     ports:
       - "127.0.0.1:1503:502"
+  modbus-illegal-address-simulator:
+    build:
+      context: ./modbus-simulator
+    command: ["python", "illegal_address_server.py"]
+    profiles: ["fault-simulators"]
+    ports:
+      - "127.0.0.1:1504:502"
   ml-lab:
     build:
       context: ./ml

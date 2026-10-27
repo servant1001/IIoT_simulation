@@ -54,6 +54,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | Modbus | `None` | `modbus-simulator` 在 `127.0.0.1:1502`、Slave ID 1、Registers 0–5。 | `-ProtocolType 1 -ActualFaultType 0 -TargetHost 127.0.0.1 -Port 1502` |
 | Modbus | `ConnectionRefused` | 停止 `modbus-simulator`，仍連到 port 1502。 | `-ProtocolType 1 -ActualFaultType 1 -TargetHost 127.0.0.1 -Port 1502` |
 | Modbus | `Timeout` | 啟動 `modbus-timeout-simulator`；它接受 TCP 連線但不回覆 Modbus request。 | `-ProtocolType 1 -ActualFaultType 4 -TargetHost 127.0.0.1 -Port 1503` |
+| Modbus | `IllegalAddress` | 啟動 `modbus-illegal-address-simulator`；它會回覆 Modbus Exception Code `02`。 | `-ProtocolType 1 -ActualFaultType 8 -TargetHost 127.0.0.1 -Port 1504` |
 | OPC UA | `None` | Prosys Server 開啟，使用預設 endpoint 與 `i=2258`。 | `-ProtocolType 2 -ActualFaultType 0 -TargetHost "opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer" -Port 53530` |
 | OPC UA | `InvalidEndpoint` | 設定為不存在的 endpoint path 或已關閉的 endpoint。 | `-ProtocolType 2 -ActualFaultType 12 -TargetHost "opc.tcp://127.0.0.1:53530/invalid" -Port 53530` |
 | OPC UA | `SessionDisconnected` | 實驗開始後重啟 Prosys Server。 | 先以正常 endpoint 建立，實驗期間重啟 Server。 |
@@ -63,17 +64,18 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 
 MQTT Experiment 使用預設 topic `factory/machine01/data`、QoS 1、JSON payload 驗證。正常情境需要 Publisher 在整個 Experiment 期間持續發布，例如每 0.5 至 1 秒一筆。Payload Invalid 情境則對同一 topic 發送純文字。
 
-啟動 Modbus Timeout Simulator：
+啟動 Modbus Timeout 與 Illegal Address Simulator：
 
 ```powershell
-docker compose --profile fault-simulators up -d --build modbus-timeout-simulator
+docker compose --profile fault-simulators up -d --build `
+  modbus-timeout-simulator modbus-illegal-address-simulator
 ```
 
 ## 目前需要補強的正式情境
 
 Experiment Collector 目前使用固定的協定預設設定：Modbus 使用 Slave ID 1、Register 0–5；OPC UA 使用 NodeId `i=2258` 且不使用安全連線；MQTT 使用匿名連線與固定 topic。因此，下列情境應先透過單次 API 測試驗證，但尚不能直接成為正式 Experiment Dataset：
 
-- Modbus `IllegalAddress`、`WrongSlaveId`
+- Modbus `WrongSlaveId`
 - OPC UA `InvalidNodeId`、`CertificateError`
 - MQTT `AuthenticationFailed`、`TopicMismatch`
 
