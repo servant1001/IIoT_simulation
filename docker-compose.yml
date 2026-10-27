@@ -35,6 +35,13 @@ services:
       context: ./modbus-simulator
     ports:
       - "127.0.0.1:1502:502"
+  modbus-timeout-simulator:
+    build:
+      context: ./modbus-simulator
+    command: ["python", "timeout_server.py"]
+    profiles: ["fault-simulators"]
+    ports:
+      - "127.0.0.1:1503:502"
   ml-lab:
     build:
       context: ./ml
