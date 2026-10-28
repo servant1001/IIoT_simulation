@@ -75,6 +75,13 @@ services:
     profiles: ["fault-simulators"]
     ports:
       - "127.0.0.1:1504:502"
+  opcua-timeout-simulator:
+    build:
+      context: ./modbus-simulator
+    command: ["python", "opcua_timeout_server.py"]
+    profiles: ["fault-simulators"]
+    ports:
+      - "127.0.0.1:53531:53531"
   ml-lab:
     build:
       context: ./ml

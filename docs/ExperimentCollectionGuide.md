@@ -57,7 +57,8 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | Modbus | `IllegalAddress` | 啟動 `modbus-illegal-address-simulator`；它會回覆 Modbus Exception Code `02`。 | `-ProtocolType 1 -ActualFaultType 8 -TargetHost 127.0.0.1 -Port 1504` |
 | OPC UA | `None` | Prosys Server 開啟，使用預設 endpoint 與 `i=2258`。 | `-ProtocolType 2 -ActualFaultType 0 -TargetHost "opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer" -Port 53530` |
 | OPC UA | `InvalidEndpoint` | 設定為不存在的 endpoint path 或已關閉的 endpoint。 | `-ProtocolType 2 -ActualFaultType 12 -TargetHost "opc.tcp://127.0.0.1:53530/invalid" -Port 53530` |
-| OPC UA | `SessionDisconnected` | 實驗開始後重啟 Prosys Server。 | 先以正常 endpoint 建立，實驗期間重啟 Server。 |
+| OPC UA | `SessionDisconnected` | 實驗開始後重啟 Prosys Server。 | 目前僅適合功能驗證：Adapter 會自動重連，重啟後的 Run 可能仍保存為成功 `None`，不可直接視為正式 `SessionDisconnected` Dataset。 |
+| OPC UA | `Timeout` | 啟動 `opcua-timeout-simulator`；它接受 TCP 連線但不回覆 OPC UA 封包。 | `-ProtocolType 2 -ActualFaultType 4 -TargetHost "opc.tcp://127.0.0.1:53531" -Port 53531` |
 | MQTT | `None` | Mosquitto 運作；持續發布合法 JSON 至 `factory/machine01/data`。 | `-ProtocolType 3 -ActualFaultType 0 -TargetHost 127.0.0.1 -Port 1883` |
 | MQTT | `BrokerUnavailable` | 停止 Mosquitto，仍連到 port 1883。 | `-ProtocolType 3 -ActualFaultType 16 -TargetHost 127.0.0.1 -Port 1883` |
 | MQTT | `PayloadInvalid` | Mosquitto 運作；持續發布非 JSON 字串至預設 topic。 | `-ProtocolType 3 -ActualFaultType 18 -TargetHost 127.0.0.1 -Port 1883` |
@@ -88,6 +89,12 @@ docker compose --profile fault-simulators up -d --build `
   modbus-timeout-simulator modbus-illegal-address-simulator
 ```
 
+啟動 OPC UA Timeout Simulator：
+
+```powershell
+docker compose --profile fault-simulators up -d --build opcua-timeout-simulator
+```
+
 ## 目前需要補強的正式情境
 
 Experiment Collector 目前使用固定的協定預設設定：Modbus 使用 Slave ID 1、Register 0–5；OPC UA 使用 NodeId `i=2258` 且不使用安全連線；MQTT 使用匿名連線與固定 topic。因此，下列情境應先透過單次 API 測試驗證，但尚不能直接成為正式 Experiment Dataset：
@@ -95,6 +102,8 @@ Experiment Collector 目前使用固定的協定預設設定：Modbus 使用 Sla
 - Modbus `WrongSlaveId`
 - OPC UA `InvalidNodeId`、`CertificateError`
 - MQTT `AuthenticationFailed`、`TopicMismatch`
+
+另外，OPC UA `SessionDisconnected` 雖可透過重啟 Prosys Server 驗證 Adapter 的重連行為，但目前 Collector 會在同一 Run 內重連並回傳成功資料。正式蒐集前需要可控制、可重複產生 Session／Secure Channel 中斷的 Simulator，或讓 Experiment 保存重連前的中斷事件。
 
 要蒐集上述正式資料，下一步需將協定設定加入 Device 或 Experiment 設定，讓 Collector 不只使用預設值。不要將單次 `/test`、`/test-opc-ua`、`/test-mqtt` 的紀錄混入正式 Dataset。
 
