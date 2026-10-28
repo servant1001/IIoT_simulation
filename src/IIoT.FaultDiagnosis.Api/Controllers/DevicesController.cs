@@ -19,7 +19,7 @@ public sealed class DevicesController(IDeviceService deviceService, IDeviceConne
         CancellationToken cancellationToken)
     {
         var device = await deviceService.CreateAsync(
-            new CreateDeviceCommand(request.Name, request.ProtocolType, request.Host, request.Port, request.IsEnabled),
+            new CreateDeviceCommand(request.Name, request.ProtocolType, request.Host, request.Port, request.IsEnabled, request.Settings),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = device.Id }, device);
@@ -49,7 +49,7 @@ public sealed class DevicesController(IDeviceService deviceService, IDeviceConne
     {
         var device = await deviceService.UpdateAsync(
             id,
-            new UpdateDeviceCommand(request.Name, request.ProtocolType, request.Host, request.Port, request.IsEnabled),
+            new UpdateDeviceCommand(request.Name, request.ProtocolType, request.Host, request.Port, request.IsEnabled, request.Settings),
             cancellationToken);
 
         return device is null ? NotFound() : Ok(device);

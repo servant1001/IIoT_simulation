@@ -8,6 +8,8 @@ public sealed class DeviceService(IDeviceRepository repository, TimeProvider tim
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        var settings = command.Settings ?? DeviceProtocolSettings.Default;
+        settings.ValidateFor(command.ProtocolType);
         var device = new Device(
             Guid.NewGuid(),
             command.Name,
@@ -15,7 +17,8 @@ public sealed class DeviceService(IDeviceRepository repository, TimeProvider tim
             command.Host,
             command.Port,
             command.IsEnabled,
-            timeProvider.GetUtcNow());
+            timeProvider.GetUtcNow(),
+            settings.Serialize());
 
         await repository.AddAsync(device, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
@@ -44,13 +47,16 @@ public sealed class DeviceService(IDeviceRepository repository, TimeProvider tim
             return null;
         }
 
+        var settings = command.Settings ?? DeviceProtocolSettings.Deserialize(device.ProtocolSettingsJson);
+        settings.ValidateFor(command.ProtocolType);
         device.Update(
             command.Name,
             command.ProtocolType,
             command.Host,
             command.Port,
             command.IsEnabled,
-            timeProvider.GetUtcNow());
+            timeProvider.GetUtcNow(),
+            settings.Serialize());
 
         await repository.SaveChangesAsync(cancellationToken);
         return DeviceDto.FromEntity(device);

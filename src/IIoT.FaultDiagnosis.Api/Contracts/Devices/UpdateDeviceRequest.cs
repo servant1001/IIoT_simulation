@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using IIoT.FaultDiagnosis.Domain.Enums;
+using IIoT.FaultDiagnosis.Application.Devices;
 
 namespace IIoT.FaultDiagnosis.Api.Contracts.Devices;
 
@@ -20,4 +21,6 @@ public sealed class UpdateDeviceRequest
     public int Port { get; init; }
 
     public bool IsEnabled { get; init; } = true;
+
+    public DeviceProtocolSettings? Settings { get; init; }
 }

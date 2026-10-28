@@ -10,6 +10,7 @@ public sealed record DeviceDto(
     string Host,
     int Port,
     bool IsEnabled,
+    DeviceProtocolSettings Settings,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {
@@ -20,6 +21,7 @@ public sealed record DeviceDto(
         device.Host,
         device.Port,
         device.IsEnabled,
+        DeviceProtocolSettings.Deserialize(device.ProtocolSettingsJson).WithoutSecrets(),
         device.CreatedAt,
         device.UpdatedAt);
 }

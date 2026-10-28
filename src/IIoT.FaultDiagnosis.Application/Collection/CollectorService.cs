@@ -4,6 +4,9 @@ using IIoT.FaultDiagnosis.Application.Devices;
 using IIoT.FaultDiagnosis.Domain.Entities;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using IIoT.FaultDiagnosis.Protocols.Abstractions;
+using IIoT.FaultDiagnosis.Protocols.Modbus;
+using IIoT.FaultDiagnosis.Protocols.Mqtt;
+using IIoT.FaultDiagnosis.Protocols.OpcUa;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,7 +15,9 @@ namespace IIoT.FaultDiagnosis.Application.Collection;
 public sealed class CollectorService(
     IDeviceRepository deviceRepository,
     ICommunicationRecordRepository communicationRecordRepository,
-    IEnumerable<IProtocolAdapter> protocolAdapters,
+    IModbusProtocolAdapter modbusAdapter,
+    IOpcUaProtocolAdapter opcUaAdapter,
+    IMqttProtocolAdapter mqttAdapter,
     IOptions<CollectorOptions> options,
     TimeProvider timeProvider,
     ILogger<CollectorService> logger) : ICollectorService
@@ -59,16 +64,7 @@ public sealed class CollectorService(
     {
         var startedAt = timeProvider.GetUtcNow();
         var stopwatch = Stopwatch.StartNew();
-        var adapter = protocolAdapters.SingleOrDefault(candidate => candidate.ProtocolType == device.ProtocolType);
-        var attempt = adapter is not null
-            ? await CollectWithRetryAsync(device, adapter, collectorOptions, cancellationToken)
-            : new CollectionAttempt(
-                CollectionResult.Failed(
-                    FaultType.Unknown,
-                    "UnsupportedProtocol",
-                    $"No adapter is registered for protocol '{device.ProtocolType}'.",
-                    BuildRawRequest()),
-                0);
+        var attempt = await CollectWithRetryAsync(device, collectorOptions, cancellationToken);
 
         stopwatch.Stop();
         var completedAt = timeProvider.GetUtcNow();
@@ -117,20 +113,19 @@ public sealed class CollectorService(
             stopwatch.Elapsed.TotalMilliseconds);
     }
 
-    private async Task<CollectionAttempt> CollectWithRetryAsync(
-        Device device,
-        IProtocolAdapter adapter,
-        CollectorOptions collectorOptions,
-        CancellationToken cancellationToken)
+    private async Task<CollectionAttempt> CollectWithRetryAsync(Device device, CollectorOptions collectorOptions, CancellationToken cancellationToken)
     {
+        var settings = DeviceProtocolSettings.Deserialize(device.ProtocolSettingsJson);
+        settings.ValidateFor(device.ProtocolType);
+        var (adapter, connectAsync, collectAsync) = BuildProtocolOperations(device, settings);
         CollectionResult? lastResult = null;
         for (var attempt = 0; attempt <= collectorOptions.MaxRetry; attempt++)
         {
             try
             {
-                var connectionResult = await adapter.ConnectAsync(device, cancellationToken);
+                var connectionResult = await connectAsync(cancellationToken);
                 lastResult = connectionResult.Success
-                    ? await adapter.CollectAsync(device, cancellationToken)
+                    ? await collectAsync(cancellationToken)
                     : CollectionResult.Failed(
                         connectionResult.FaultType,
                         connectionResult.ErrorCode,
@@ -162,6 +157,29 @@ public sealed class CollectorService(
     }
 
     private static string BuildRawRequest() => "Protocol adapter unavailable";
+
+    private (IProtocolAdapter Adapter, Func<CancellationToken, Task<ConnectionResult>> ConnectAsync, Func<CancellationToken, Task<CollectionResult>> CollectAsync)
+        BuildProtocolOperations(Device device, DeviceProtocolSettings settings) => device.ProtocolType switch
+        {
+            ProtocolType.ModbusTcp => (
+                modbusAdapter,
+                token => modbusAdapter.ConnectAsync(device, token),
+                token => modbusAdapter.CollectAsync(device, settings.ToModbusConfiguration(), token)),
+            ProtocolType.OpcUa => (
+                opcUaAdapter,
+                token => opcUaAdapter.ConnectAsync(device, settings.ToOpcUaConfiguration(GetOpcUaEndpoint(device)), token),
+                token => opcUaAdapter.CollectAsync(device, settings.ToOpcUaConfiguration(GetOpcUaEndpoint(device)), token)),
+            ProtocolType.Mqtt => (
+                mqttAdapter,
+                token => mqttAdapter.ConnectAsync(device, settings.ToMqttConfiguration(), token),
+                token => mqttAdapter.CollectAsync(device, settings.ToMqttConfiguration(), token)),
+            _ => throw new InvalidOperationException($"No adapter is registered for protocol '{device.ProtocolType}'.")
+        };
+
+    private static string GetOpcUaEndpoint(Device device) =>
+        device.Host.StartsWith("opc.tcp://", StringComparison.OrdinalIgnoreCase)
+            ? device.Host
+            : $"opc.tcp://{device.Host}:{device.Port}";
 
     private sealed record CollectionAttempt(CollectionResult Result, int RetryCount);
 }

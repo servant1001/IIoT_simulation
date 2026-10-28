@@ -7,4 +7,5 @@ public sealed record UpdateDeviceCommand(
     ProtocolType ProtocolType,
     string Host,
     int Port,
-    bool IsEnabled);
+    bool IsEnabled,
+    DeviceProtocolSettings? Settings = null);

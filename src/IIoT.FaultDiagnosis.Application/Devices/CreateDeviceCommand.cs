@@ -7,4 +7,5 @@ public sealed record CreateDeviceCommand(
     ProtocolType ProtocolType,
     string Host,
     int Port,
-    bool IsEnabled);
+    bool IsEnabled,
+    DeviceProtocolSettings? Settings = null);

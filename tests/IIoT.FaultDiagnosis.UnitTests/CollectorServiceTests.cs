@@ -6,6 +6,8 @@ using IIoT.FaultDiagnosis.Domain.Entities;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using IIoT.FaultDiagnosis.Protocols.Abstractions;
 using IIoT.FaultDiagnosis.Protocols.Modbus;
+using IIoT.FaultDiagnosis.Protocols.Mqtt;
+using IIoT.FaultDiagnosis.Protocols.OpcUa;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -25,7 +27,9 @@ public sealed class CollectorServiceTests
         var service = new CollectorService(
             deviceRepository,
             recordRepository,
-            [adapter],
+            adapter,
+            new SuccessOpcUaAdapter(),
+            new SuccessMqttAdapter(),
             Options.Create(new CollectorOptions { MaxRetry = 1, RetryDelayMs = 0 }),
             TimeProvider.System,
             NullLogger<CollectorService>.Instance);
@@ -69,7 +73,9 @@ public sealed class CollectorServiceTests
         var service = new CollectorService(
             new InMemoryDeviceRepository(firstDevice, secondDevice),
             records,
-            [new ThrowThenSuccessModbusAdapter()],
+            new ThrowThenSuccessModbusAdapter(),
+            new SuccessOpcUaAdapter(),
+            new SuccessMqttAdapter(),
             Options.Create(new CollectorOptions { MaxRetry = 0 }),
             TimeProvider.System,
             NullLogger<CollectorService>.Instance);
@@ -90,7 +96,9 @@ public sealed class CollectorServiceTests
         var service = new CollectorService(
             new InMemoryDeviceRepository(device),
             records,
-            [adapter],
+            new RetryThenSuccessModbusAdapter(),
+            adapter,
+            new SuccessMqttAdapter(),
             Options.Create(new CollectorOptions { MaxRetry = 0 }),
             TimeProvider.System,
             NullLogger<CollectorService>.Instance);
@@ -113,7 +121,9 @@ public sealed class CollectorServiceTests
         var service = new CollectorService(
             new InMemoryDeviceRepository(device),
             records,
-            [adapter],
+            new RetryThenSuccessModbusAdapter(),
+            new SuccessOpcUaAdapter(),
+            adapter,
             Options.Create(new CollectorOptions { MaxRetry = 0 }),
             TimeProvider.System,
             NullLogger<CollectorService>.Instance);
@@ -232,7 +242,7 @@ public sealed class CollectorServiceTests
         public Task DisconnectAsync(Device device, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    private sealed class SuccessOpcUaAdapter : IProtocolAdapter
+    private sealed class SuccessOpcUaAdapter : IOpcUaProtocolAdapter
     {
         public int ConnectCalls { get; private set; }
         public int CollectCalls { get; private set; }
@@ -246,6 +256,12 @@ public sealed class CollectorServiceTests
         }
 
         public Task<CollectionResult> CollectAsync(Device device, CancellationToken cancellationToken)
+            => CollectAsync(device, new OpcUaConfiguration("opc.tcp://127.0.0.1:4840", ["i=2258"]), cancellationToken);
+
+        public Task<ConnectionResult> ConnectAsync(Device device, OpcUaConfiguration configuration, CancellationToken cancellationToken) =>
+            ConnectAsync(device, cancellationToken);
+
+        public Task<CollectionResult> CollectAsync(Device device, OpcUaConfiguration configuration, CancellationToken cancellationToken)
         {
             CollectCalls++;
             return Task.FromResult(new CollectionResult(true, FaultType.None, null, null, "NodeId=i=2258", "42", "42"));
@@ -258,7 +274,7 @@ public sealed class CollectorServiceTests
         }
     }
 
-    private sealed class SuccessMqttAdapter : IProtocolAdapter
+    private sealed class SuccessMqttAdapter : IMqttProtocolAdapter
     {
         public int ConnectCalls { get; private set; }
         public int CollectCalls { get; private set; }
@@ -272,6 +288,12 @@ public sealed class CollectorServiceTests
         }
 
         public Task<CollectionResult> CollectAsync(Device device, CancellationToken cancellationToken)
+            => CollectAsync(device, MqttConfiguration.Default, cancellationToken);
+
+        public Task<ConnectionResult> ConnectAsync(Device device, MqttConfiguration configuration, CancellationToken cancellationToken) =>
+            ConnectAsync(device, cancellationToken);
+
+        public Task<CollectionResult> CollectAsync(Device device, MqttConfiguration configuration, CancellationToken cancellationToken)
         {
             CollectCalls++;
             return Task.FromResult(new CollectionResult(true, FaultType.None, null, null, "Topic=factory/machine01/data", "{}", "{}"));
