@@ -43,6 +43,19 @@ services:
           mosquitto_pub -h mosquitto -t factory/machine01/data -q 1 -m '{"temperature":25.0,"pressure":101.3,"rpm":1500}';
           sleep 0.5;
         done
+  mqtt-invalid-payload-publisher:
+    image: eclipse-mosquitto:2
+    profiles: ["mqtt-simulators"]
+    depends_on:
+      - mosquitto
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          mosquitto_pub -h mosquitto -t factory/machine01/data -q 1 -m 'not-json-payload';
+          sleep 0.5;
+        done
   modbus-simulator:
     build:
       context: ./modbus-simulator

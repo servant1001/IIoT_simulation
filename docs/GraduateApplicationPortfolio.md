@@ -95,10 +95,11 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - `dotnet build` 與 Unit Tests 的通過結果。
 - Modbus 正常情境正式實驗 `MODBUS_NORMAL_100RUN_CLEAN_20261026`：100 個 Run、1,000 筆成功讀取、0 次失敗，所有紀錄的 `FaultType` 為 `None`。
 - Modbus 四類正式資料（正常、ConnectionRefused、Timeout、IllegalAddress）共 400 個 Run、1,600 筆紀錄，以及依 Experiment Run 切分的初步 ML baseline。三種模型在此受控環境測試集皆為 1.000 weighted F1；此結果應描述為流程驗證與初步 baseline，而非現場泛化結論。
+- MQTT 三類正式資料（正常、BrokerUnavailable、PayloadInvalid）共 300 個 Run、900 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，且均正確標註為 `PayloadInvalid`／`JsonReaderException`。這批資料目前保留供後續跨協定實驗使用，尚未納入 ML 成績宣稱。
 
 ## 正在進行的實驗計畫
 
-目前已完成 Modbus TCP 的正常、Connection Refused、Timeout、Illegal Address 四種情境，各 100 個正式 Experiment Runs，並完成受控環境的初步 ML baseline。後續將針對 OPC UA、MQTT 與更多 Modbus FaultType 收集至少 100 個不同 Experiment Runs，擴大資料的協定、設備與網路條件多樣性。
+目前已完成 Modbus TCP 的正常、Connection Refused、Timeout、Illegal Address 四種情境，以及 MQTT 的正常、Broker Unavailable、Payload Invalid 三種情境，各 100 個正式 Experiment Runs。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對 OPC UA、更多 MQTT 與更多 Modbus FaultType 收集至少 100 個不同 Experiment Runs，擴大資料的協定、設備與網路條件多樣性。
 
 完成收集後，將比較：
 

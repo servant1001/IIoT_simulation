@@ -419,6 +419,7 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 - Mosquitto 已驗證 QoS 1 訂閱、JSON payload 解析與 PostgreSQL `communication_records` 保存。
 - Mosquitto 重啟期間已驗證 MQTT adapter 重新連線、重新訂閱並成功接收訊息。
 - 需帳密的隔離 Mosquitto 已驗證錯誤密碼回傳 `NotAuthorized` 時正規化為 `AuthenticationFailed`；非 JSON 訊息已驗證正規化為 `PayloadInvalid`。
+- MQTT `PayloadInvalid` 正式實驗 `MQTT_PAYLOAD_INVALID_100RUN_20261028` 已完成 100 個 Run；100 筆紀錄皆為 `PayloadInvalid`，錯誤碼皆為 `JsonReaderException`。實驗結束後已復原正常 JSON Publisher。
 - ML Docker image 已成功建置，並以隔離的 pipeline smoke Dataset 驗證 Logistic Regression、Random Forest、SVM 訓練、metrics、confusion matrix 與模型輸出。
 - RAG 知識檢索、結構化診斷、trace 保存與 Ground Truth 隔離已由 Unit Tests 驗證。
 - Phase 10 migration 已套用至 PostgreSQL；實際 Modbus 通訊紀錄已驗證 RAG 診斷、三個候選 FaultType、三筆歷史案例、三個引用來源、trace 保存與實驗 RAG 評估端點。
@@ -427,4 +428,4 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前 Modbus 的 `None`、`ConnectionRefused`、`Timeout`、`IllegalAddress` 均已完成至少 100 個正式 Run；其餘 OPC UA、MQTT 情境仍待蒐集。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)。請依 [docs/Dataset.md](docs/Dataset.md) 持續蒐集其他協定的故障情境，再執行跨協定訓練與 Phase 10 RAG 評估。
+目前 Modbus 的 `None`、`ConnectionRefused`、`Timeout`、`IllegalAddress`，以及 MQTT 的 `None`、`BrokerUnavailable`、`PayloadInvalid` 均已完成至少 100 個正式 Run。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 正式資料尚未納入跨協定 ML 訓練。請依 [docs/Dataset.md](docs/Dataset.md) 持續蒐集 OPC UA 與其他 MQTT 故障情境，再執行跨協定訓練與 Phase 10 RAG 評估。

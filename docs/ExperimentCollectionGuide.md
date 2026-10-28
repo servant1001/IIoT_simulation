@@ -70,6 +70,17 @@ MQTT Experiment 使用預設 topic `factory/machine01/data`、QoS 1、JSON paylo
 docker compose --profile mqtt-simulators up -d mqtt-json-publisher
 ```
 
+啟動 MQTT `PayloadInvalid` 情境 Publisher 前，先停止正常 JSON Publisher，避免兩種 payload 混入同一個 Experiment；實驗完成後再恢復正常 Publisher：
+
+```powershell
+docker compose --profile mqtt-simulators stop mqtt-json-publisher
+docker compose --profile mqtt-simulators up -d mqtt-invalid-payload-publisher
+
+# 實驗完成後
+docker compose --profile mqtt-simulators stop mqtt-invalid-payload-publisher
+docker compose --profile mqtt-simulators up -d mqtt-json-publisher
+```
+
 啟動 Modbus Timeout 與 Illegal Address Simulator：
 
 ```powershell
