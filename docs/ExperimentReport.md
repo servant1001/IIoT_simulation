@@ -49,10 +49,11 @@
 | OPC UA | 正常 | `OPCUA_NORMAL_100RUN_20261028` | 100 | 400 | 400 | 0 | 0 | `None (0)`：400 筆 |
 | OPC UA | Invalid Endpoint | `OPCUA_INVALID_ENDPOINT_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `InvalidEndpoint (12)`：100 筆 |
 | OPC UA | Timeout | `OPCUA_TIMEOUT_100RUN_20261028` | 100 | 100 | 0 | 0 | 100 | `Timeout (4)`：100 筆 |
+| OPC UA | Invalid NodeId | `OPCUA_INVALID_NODE_ID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `InvalidNodeId (13)`：100 筆 |
 | MQTT | 正常 JSON | `MQTT_NORMAL_100RUN_20261028` | 100 | 700 | 700 | 0 | 0 | `None (0)`：700 筆 |
 | MQTT | Broker Unavailable | `MQTT_BROKER_UNAVAILABLE_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `BrokerUnavailable (16)`：100 筆 |
 | MQTT | Payload Invalid | `MQTT_PAYLOAD_INVALID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `PayloadInvalid (18)`：100 筆 |
-| **合計** | **10 種情境** |  | **1,000** | **3,100** | **2,100** | **700** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
+| **合計** | **11 種情境** |  | **1,100** | **3,200** | **2,100** | **800** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
 
 ### 4.2 可追溯的 Experiment ID 與錯誤碼
 
@@ -65,6 +66,7 @@
 | OPC UA 正常 | `6a764e7b-72ee-44c6-ba7f-c32e4fd1ddd2` | 無錯誤碼。 |
 | OPC UA Invalid Endpoint | `1fb37472-4ac6-4a4b-b27e-47382db7290d` | `ServiceResultException`（Server 回傳 `BadTcpEndpointUrlInvalid`）。 |
 | OPC UA Timeout | `19ac5f4a-2a24-45eb-bbbf-9831781b2225` | `ServiceResultException`（Simulator 不回覆，Client 回傳 `BadRequestTimeout`）。 |
+| OPC UA Invalid NodeId | `03ac8c47-2836-41cd-bd54-d3223ed09b5f` | `ServiceResultException`（Prosys 回傳 `BadNodeIdUnknown`）。 |
 | MQTT 正常 JSON | `cd71f7be-3994-4f45-996e-95d8c1050884` | 無錯誤碼。 |
 | MQTT Broker Unavailable | `56fc4694-becd-43d4-be0c-30772b2174b1` | `MqttCommunicationException`。 |
 | MQTT Payload Invalid | `a02c06c5-5346-42c5-a6d9-02227cbafda7` | `JsonReaderException`。 |
@@ -89,6 +91,7 @@
 - **正常**：啟動本機 Prosys OPC UA Simulation Server，使用 `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與預設 NodeId `i=2258`。100 個 Run 共取得 400 筆成功讀取，皆為 `None`，未出現 Session 中斷、逾時或憑證錯誤。
 - **Invalid Endpoint**：Server 維持運作，但 Collector 指向不存在的 `opc.tcp://localhost:53530/invalid`。100 筆資料均收到 `BadTcpEndpointUrlInvalid`，並正規化為 `InvalidEndpoint`／`ServiceResultException`。收集完成後，目標 Device 已恢復為正常 endpoint。
 - **Timeout**：Docker 內的 `opcua-timeout-simulator` 接受 TCP 連線但不回覆 OPC UA 封包。100 筆資料皆在預設逾時與重試後回傳 `BadRequestTimeout`，並正規化為 `Timeout`／`ServiceResultException`。每個 Run 約需 43 秒；收集完成後已停止 Simulator，目標 Device 已恢復為正常 Prosys endpoint。
+- **Invalid NodeId**：透過 Device protocol settings 將 NodeId 設為不存在的 `i=999999`。100 筆資料皆回傳 `BadNodeIdUnknown`，並正規化為 `InvalidNodeId`／`ServiceResultException`；收集完成後已恢復預設 NodeId `i=2258`。
 
 ## 5. 初步 ML 與診斷工作
 
