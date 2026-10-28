@@ -46,10 +46,11 @@
 | Modbus TCP | Connection Refused | `MODBUS_CONNECTION_REFUSED_100RUN_20261026` | 100 | 100 | 0 | 100 | 0 | `ConnectionRefused (1)`：100 筆 |
 | Modbus TCP | Timeout | `MODBUS_TIMEOUT_100RUN_20261027` | 100 | 200 | 0 | 0 | 200 | `Timeout (4)`：200 筆 |
 | Modbus TCP | Illegal Address | `MODBUS_ILLEGAL_ADDRESS_100RUN_20261027` | 100 | 300 | 0 | 300 | 0 | `IllegalAddress (8)`：300 筆 |
+| OPC UA | 正常 | `OPCUA_NORMAL_100RUN_20261028` | 100 | 400 | 400 | 0 | 0 | `None (0)`：400 筆 |
 | MQTT | 正常 JSON | `MQTT_NORMAL_100RUN_20261028` | 100 | 700 | 700 | 0 | 0 | `None (0)`：700 筆 |
 | MQTT | Broker Unavailable | `MQTT_BROKER_UNAVAILABLE_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `BrokerUnavailable (16)`：100 筆 |
 | MQTT | Payload Invalid | `MQTT_PAYLOAD_INVALID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `PayloadInvalid (18)`：100 筆 |
-| **合計** | **7 種情境** |  | **700** | **2,500** | **1,700** | **600** | **200** | **所有正式紀錄皆與對應 Ground Truth 一致** |
+| **合計** | **8 種情境** |  | **800** | **2,900** | **2,100** | **600** | **200** | **所有正式紀錄皆與對應 Ground Truth 一致** |
 
 ### 4.2 可追溯的 Experiment ID 與錯誤碼
 
@@ -59,6 +60,7 @@
 | Modbus TCP Connection Refused | `b3b9d96f-99e1-4068-b11b-19334f97bd8b` | `ConnectionRefused`。 |
 | Modbus TCP Timeout | `db384e41-5f6f-419e-b8a3-a6eee732bee0` | `ReadTimeout`。 |
 | Modbus TCP Illegal Address | `03dfc0ac-afae-4b07-89e5-e8c1015b7a46` | `ModbusExceptionCode02`。 |
+| OPC UA 正常 | `6a764e7b-72ee-44c6-ba7f-c32e4fd1ddd2` | 無錯誤碼。 |
 | MQTT 正常 JSON | `cd71f7be-3994-4f45-996e-95d8c1050884` | 無錯誤碼。 |
 | MQTT Broker Unavailable | `56fc4694-becd-43d4-be0c-30772b2174b1` | `MqttCommunicationException`。 |
 | MQTT Payload Invalid | `a02c06c5-5346-42c5-a6d9-02227cbafda7` | `JsonReaderException`。 |
@@ -78,6 +80,10 @@
 - **Broker Unavailable**：停止 Mosquitto 與 JSON Publisher，Collector 連線至 `127.0.0.1:1883` 時產生 `MqttCommunicationException`，並正規化為 `BrokerUnavailable`；收集完成後服務已恢復。
 - **Payload Invalid**：Mosquitto 保持運作，但停止 JSON Publisher、改用 Invalid Payload Publisher 對同一 topic 發送純文字。100 筆資料均被 JSON Parser 拒絕並正規化為 `PayloadInvalid`；收集完成後已恢復正常 JSON Publisher。
 
+#### OPC UA
+
+- **正常**：啟動本機 Prosys OPC UA Simulation Server，使用 `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與預設 NodeId `i=2258`。100 個 Run 共取得 400 筆成功讀取，皆為 `None`，未出現 Session 中斷、逾時或憑證錯誤。
+
 ## 5. 初步 ML 與診斷工作
 
 Modbus 的四種情境已另行建立第一版受控環境 ML baseline：400 個 Run、1,600 筆紀錄，以 Experiment Run 為單位切分訓練、驗證與測試資料。Logistic Regression、Random Forest 與 SVM 在此受控資料上的 weighted F1 均為 1.000。詳細方法、輸出與限制見 [ModbusMlBaseline.md](ModbusMlBaseline.md)。
@@ -89,15 +95,15 @@ Rule-based 與 RAG 診斷功能已在專案中實作；後續可使用這些正�
 ## 6. 已知限制
 
 1. 本報告以本機 Docker 與外部模擬服務的受控條件為主，尚未使用真實 PLC、工業網路延遲或現場設備資料。
-2. 正式資料目前涵蓋 Modbus TCP 與 MQTT；OPC UA 雖已完成連線與多種錯誤的功能驗證，尚未完成 100 次 Run 的正式資料集。
+2. 正式資料目前涵蓋 Modbus TCP、MQTT，以及 OPC UA 正常情境；OPC UA 的故障情境雖已完成多種功能驗證，尚未完成 100 次 Run 的正式資料集。
 3. Collector 的正式 Experiment 仍使用固定協定預設值：Modbus Slave ID 1／Register 0–5、OPC UA NodeId `i=2258`／無安全連線、MQTT 匿名連線／固定 topic。因此 Modbus `WrongSlaveId`、OPC UA `InvalidNodeId` 與 `CertificateError`、MQTT `AuthenticationFailed` 與 `TopicMismatch` 尚不能直接形成正式 Dataset。
 4. 某些情境的每 Run 紀錄數不同，原因是輪詢頻率、訊息到達頻率與重試機制不同；比較資料量時應同時報告 Run 數與紀錄數。
 5. 實驗資料位於 Docker PostgreSQL Volume；Git commit 保存程式、Compose 與文件，**不會自動保存資料庫內容**。重要研究資料應另外匯出 CSV 並備份。
 
 ## 7. 下一步
 
-1. 使用已安裝的 Prosys OPC UA Simulation Server，先完成 OPC UA 正常情境的 100 次正式 Experiment Runs。
-2. 依序收集可由目前設定重現的 OPC UA 故障情境，並補強 Device／Experiment 的協定設定欄位，使 `InvalidNodeId`、`CertificateError`、MQTT 認證與 topic mismatch 可以成為正式資料。
+1. 依序收集可由目前設定重現的 OPC UA 故障情境，並補強 Device／Experiment 的協定設定欄位，使 `InvalidNodeId`、`CertificateError`、MQTT 認證與 topic mismatch 可以成為正式資料。
+2. 針對 OPC UA Server 重啟或 Endpoint 不可用情境，設計可控的 100 次 Run 故障實驗。
 3. 匯出完成的正式資料集，將 MQTT 與未來 OPC UA 資料納入跨協定或分協定的 ML 比較。
 4. 以相同 Ground Truth 進行 Rule-based、ML 與 RAG 的公平評估，並記錄正確率、延遲、可解釋性與錯誤案例。
 
