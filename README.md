@@ -429,3 +429,5 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 ## 待完成的資料收集
 
 目前 Modbus 的 `None`、`ConnectionRefused`、`Timeout`、`IllegalAddress`，以及 MQTT 的 `None`、`BrokerUnavailable`、`PayloadInvalid` 均已完成至少 100 個正式 Run。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 正式資料尚未納入跨協定 ML 訓練。請依 [docs/Dataset.md](docs/Dataset.md) 持續蒐集 OPC UA 與其他 MQTT 故障情境，再執行跨協定訓練與 Phase 10 RAG 評估。
+
+截至 2026-10-28 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
