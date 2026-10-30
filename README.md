@@ -428,6 +428,6 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前 Modbus 的 `None`、`ConnectionRefused`、`Timeout`、`IllegalAddress`，MQTT 的 `None`、`BrokerUnavailable`、`PayloadInvalid`，以及 OPC UA 的 `None`、`InvalidEndpoint`、`Timeout` 均已完成至少 100 個正式 Run。OPC UA 正常實驗 `OPCUA_NORMAL_100RUN_20261028` 完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；Invalid Endpoint 與 Timeout 實驗各完成 100 個 Run，且所有紀錄皆正確標註為對應 FaultType。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。請依 [docs/Dataset.md](docs/Dataset.md) 持續蒐集 OPC UA 與其他 MQTT 故障情境，再執行跨協定訓練與 Phase 10 RAG 評估。
+目前已完成 13 種各 100 Run 的受控正式情境，共 1,300 個 Experiment Runs 與 3,400 筆通訊紀錄：Modbus TCP 四種、MQTT 四種（含隔離帳密 Broker 的 `AuthenticationFailed`）與 OPC UA 五種。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。後續可依 [docs/Dataset.md](docs/Dataset.md) 收集 `SessionDisconnected`、`TopicMismatch` 等情境，再執行跨協定訓練與 Phase 10 RAG 評估。
 
-截至 2026-10-28 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
+截至 2026-10-30 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。

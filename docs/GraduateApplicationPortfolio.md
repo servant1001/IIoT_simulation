@@ -48,7 +48,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | Modbus TCP | 自建 Docker Modbus Simulator（Python + `pymodbus`） | 專案內 `docker-compose.yml` 建置；公開 `127.0.0.1:1502` | 模擬 PLC 的 Slave ID `1` 與 Holding Registers `0–5`，供 Collector 以 Modbus TCP 實際讀取。 |
 | OPC UA | Prosys OPC UA Simulation Server | Windows 外部模擬器 | 模擬 OPC UA Server、Endpoint 與 NodeId，驗證節點讀取及 Endpoint／NodeId 等故障。 |
-| MQTT | Eclipse Mosquitto | Docker Compose 容器；公開 `127.0.0.1:1883` | 模擬 MQTT Broker、Topic 與 JSON 訊息發布／訂閱。 |
+| MQTT | Eclipse Mosquitto | Docker Compose 容器；正常 Broker 為 `127.0.0.1:1883`，另有隔離帳密 Broker `127.0.0.1:1884` | 模擬 MQTT Broker、Topic、JSON 訊息發布／訂閱與帳密拒絕。 |
 | 資料庫 | PostgreSQL | Docker Compose 容器 | 儲存 Device、Experiment Run、通訊紀錄、系統指標與診斷資料。 |
 | 日誌 | Seq | Docker Compose 容器 | 集中檢視結構化日誌、錯誤與通訊事件。 |
 
@@ -95,14 +95,15 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - `dotnet build` 與 Unit Tests 的通過結果。
 - Modbus 正常情境正式實驗 `MODBUS_NORMAL_100RUN_CLEAN_20261026`：100 個 Run、1,000 筆成功讀取、0 次失敗，所有紀錄的 `FaultType` 為 `None`。
 - Modbus 四類正式資料（正常、ConnectionRefused、Timeout、IllegalAddress）共 400 個 Run、1,600 筆紀錄，以及依 Experiment Run 切分的初步 ML baseline。三種模型在此受控環境測試集皆為 1.000 weighted F1；此結果應描述為流程驗證與初步 baseline，而非現場泛化結論。
-- MQTT 三類正式資料（正常、BrokerUnavailable、PayloadInvalid）共 300 個 Run、900 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，且均正確標註為 `PayloadInvalid`／`JsonReaderException`。這批資料目前保留供後續跨協定實驗使用，尚未納入 ML 成績宣稱。
+- MQTT 四類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed）共 400 個 Run、1,000 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，而 `AuthenticationFailed` 的 100 筆紀錄皆由隔離帳密 Broker 回傳 `NotAuthorized` 觸發。這批資料目前保留供後續跨協定實驗使用，尚未納入 ML 成績宣稱。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。
 - OPC UA Invalid Endpoint 正式實驗 `OPCUA_INVALID_ENDPOINT_100RUN_20261028` 已完成 100 個 Run、100 筆失敗紀錄；Server 保持運作但 Collector 指向不存在的 endpoint，所有紀錄皆正確標註為 `InvalidEndpoint`／`ServiceResultException`。
 - OPC UA Timeout 正式實驗 `OPCUA_TIMEOUT_100RUN_20261028` 已完成 100 個 Run、100 筆逾時紀錄；Docker Timeout Simulator 接受 TCP 連線但不回覆 OPC UA 封包，所有紀錄皆正確標註為 `Timeout`／`ServiceResultException`。
+- OPC UA `InvalidNodeId` 與 `CertificateError` 正式實驗各完成 100 個 Run；前者以不存在的 NodeId 取得 `BadNodeIdUnknown`，後者啟用安全連線但不信任 Client 憑證而取得 `BadSecurityChecksFailed`。兩者皆正確保存為對應的 Ground Truth。
 
 ## 正在進行的實驗計畫
 
-目前已完成 Modbus TCP 的正常、Connection Refused、Timeout、Illegal Address 四種情境、MQTT 的正常、Broker Unavailable、Payload Invalid 三種情境，以及 OPC UA 的正常、Invalid Endpoint、Timeout 情境，各 100 個正式 Experiment Runs。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對更多 OPC UA 故障、更多 MQTT 與更多 Modbus FaultType 收集至少 100 個不同 Experiment Runs，擴大資料的協定、設備與網路條件多樣性。
+目前已完成 13 種各 100 Run 的受控正式情境，共 1,300 個 Experiment Runs 與 3,400 筆通訊紀錄：Modbus TCP 四種、MQTT 四種與 OPC UA 五種。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對 `SessionDisconnected`、`TopicMismatch`、更多 Modbus FaultType 與更多網路條件收集正式資料，擴大資料的協定、設備與網路條件多樣性。
 
 完成收集後，將比較：
 

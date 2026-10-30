@@ -30,6 +30,24 @@ services:
       - "127.0.0.1:1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  mosquitto-auth-simulator:
+    image: eclipse-mosquitto:2
+    profiles: ["fault-simulators"]
+    environment:
+      MQTT_AUTH_USERNAME: ${MQTT_AUTH_USERNAME:-iiot-lab}
+      MQTT_AUTH_PASSWORD: ${MQTT_AUTH_PASSWORD:-iiot-lab-password}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mosquitto_passwd -b -c /tmp/passwordfile "$$MQTT_AUTH_USERNAME" "$$MQTT_AUTH_PASSWORD";
+        chown mosquitto:mosquitto /tmp/passwordfile;
+        chmod 700 /tmp/passwordfile;
+        exec mosquitto -c /mosquitto/config/mosquitto-auth.conf;
+    ports:
+      - "127.0.0.1:1884:1884"
+    volumes:
+      - ./mosquitto/config/mosquitto-auth.conf:/mosquitto/config/mosquitto-auth.conf:ro
   mqtt-json-publisher:
     image: eclipse-mosquitto:2
     profiles: ["mqtt-simulators"]
