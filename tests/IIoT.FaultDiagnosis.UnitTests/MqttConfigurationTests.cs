@@ -2,6 +2,7 @@ using IIoT.FaultDiagnosis.Domain.Entities;
 using IIoT.FaultDiagnosis.Domain.Enums;
 using IIoT.FaultDiagnosis.Protocols.Mqtt;
 using Microsoft.Extensions.Logging.Abstractions;
+using MQTTnet;
 using Xunit;
 
 namespace IIoT.FaultDiagnosis.UnitTests;
@@ -31,6 +32,15 @@ public sealed class MqttConfigurationTests
     [Fact]
     public void Normalize_MapsJsonErrorsToPayloadInvalid() =>
         Assert.Equal(FaultType.PayloadInvalid, MqttFaultNormalizer.Normalize(new System.Text.Json.JsonException("Invalid JSON")));
+
+    [Theory]
+    [InlineData(MqttClientSubscribeResultCode.GrantedQoS1, FaultType.None)]
+    [InlineData(MqttClientSubscribeResultCode.NotAuthorized, FaultType.TopicMismatch)]
+    [InlineData(MqttClientSubscribeResultCode.TopicFilterInvalid, FaultType.TopicMismatch)]
+    public void NormalizeSubscriptionResult_MapsRejectedSubscriptionsToTopicMismatch(
+        MqttClientSubscribeResultCode resultCode,
+        FaultType expected) =>
+        Assert.Equal(expected, MqttFaultNormalizer.NormalizeSubscriptionResult(resultCode));
 
     [Fact]
     public async Task ConnectAsync_MapsAnUnavailableBroker()

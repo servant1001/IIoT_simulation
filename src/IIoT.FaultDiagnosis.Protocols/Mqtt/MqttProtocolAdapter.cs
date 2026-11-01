@@ -157,7 +157,18 @@ public sealed class MqttProtocolAdapter(ILogger<MqttProtocolAdapter> logger) : I
                     .WithTopic(configuration.Topic)
                     .WithQualityOfServiceLevel((MqttQualityOfServiceLevel)configuration.QualityOfService))
                 .Build();
-            await session.Client.SubscribeAsync(subscribeOptions, cancellationToken);
+            var subscribeResult = await session.Client.SubscribeAsync(subscribeOptions, cancellationToken);
+            var rejectedSubscription = subscribeResult.Items.FirstOrDefault(item =>
+                MqttFaultNormalizer.NormalizeSubscriptionResult(item.ResultCode) != FaultType.None);
+            if (rejectedSubscription is not null)
+            {
+                var errorCode = rejectedSubscription.ResultCode.ToString();
+                return CollectionResult.Failed(
+                    FaultType.TopicMismatch,
+                    errorCode,
+                    $"MQTT broker rejected subscription to '{configuration.Topic}': {errorCode}.",
+                    rawRequest);
+            }
 
             var readTask = session.Messages.Reader.ReadAsync(cancellationToken).AsTask();
             var timeoutTask = Task.Delay(configuration.ReceiveTimeoutMs, cancellationToken);

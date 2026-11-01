@@ -1,6 +1,6 @@
 # IIoT 通訊故障診斷實驗報告
 
-> 最後核對日期：2026-10-30（Asia/Taipei）<br>
+> 最後核對日期：2026-10-31（Asia/Taipei）<br>
 > 資料來源：本機 API 與 PostgreSQL 中的正式 Experiment Run／Communication Record。  
 > 範圍：僅列入已完成 100 次 Run 的受控正式實驗；不含單次驗證、手動測試、半途停止或開發期間的紀錄。
 
@@ -26,6 +26,7 @@
 | MQTT JSON Publisher | MQTT 正常情境 | 每 0.5 秒對 `factory/machine01/data` 發送 QoS 1 合法 JSON。 |
 | MQTT Invalid Payload Publisher | MQTT 無效資料情境 | 對相同 topic 持續發送純文字 `not-json-payload`。 |
 | MQTT Authentication Simulator | MQTT 認證失敗情境 | 隔離於 `127.0.0.1:1884` 的 Mosquitto；僅允許研究用帳號登入。 |
+| MQTT Topic Rejection Simulator | MQTT topic 不符情境 | 專案內最小 MQTT 5 協定端點，監聽 `127.0.0.1:1885`，接受連線後對訂閱回覆標準 `NotAuthorized` SUBACK。 |
 
 正式實驗開始前，`tools/Start-Experiment.ps1` 會只啟用當次目標 Device，避免其他 Collector 來源混入資料。完整操作流程見 [ExperimentCollectionGuide.md](ExperimentCollectionGuide.md)。
 
@@ -35,6 +36,7 @@
 - 先執行 1 次小型驗證實驗，確認外部故障條件與實際回傳的 `FaultType` 相符，再開始 100 次正式收集。
 - MQTT `PayloadInvalid` 收集期間會停止正常 JSON Publisher；完成後停止無效 Payload Publisher 並恢復正常 Publisher，避免混入不同資料型態。
 - MQTT `AuthenticationFailed` 使用獨立 Broker 與錯誤密碼；完成後停止該 Broker，並將目標 Device 還原至正常 MQTT Broker。
+- MQTT `TopicMismatch` 使用獨立協定端點，確認連線成功而訂閱遭拒後才開始正式收集；完成後停止 Simulator 並還原正常 MQTT Broker。
 - 同一 Run 可能產生多筆 Communication Record：正常輪詢可取得多筆成功資料；部分錯誤則可能因重試而產生多筆 Timeout／Failure。因此，Run 數與紀錄數不必相同。
 - 統計由 API 的 Experiment、Run、Records 端點於報告日期重新核對，而非由手動估算。
 
@@ -57,7 +59,8 @@
 | MQTT | Broker Unavailable | `MQTT_BROKER_UNAVAILABLE_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `BrokerUnavailable (16)`：100 筆 |
 | MQTT | Payload Invalid | `MQTT_PAYLOAD_INVALID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `PayloadInvalid (18)`：100 筆 |
 | MQTT | Authentication Failed | `MQTT_AUTHENTICATION_FAILED_100RUN_20261029` | 100 | 100 | 0 | 100 | 0 | `AuthenticationFailed (6)`：100 筆 |
-| **合計** | **13 種情境** |  | **1,300** | **3,400** | **2,100** | **1,000** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
+| MQTT | Topic Mismatch | `MQTT_TOPIC_MISMATCH_100RUN_20261030` | 100 | 300 | 0 | 300 | 0 | `TopicMismatch (17)`：300 筆 |
+| **合計** | **14 種情境** |  | **1,400** | **3,700** | **2,100** | **1,300** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
 
 ### 4.2 可追溯的 Experiment ID 與錯誤碼
 
@@ -76,6 +79,7 @@
 | MQTT Broker Unavailable | `56fc4694-becd-43d4-be0c-30772b2174b1` | `MqttCommunicationException`。 |
 | MQTT Payload Invalid | `a02c06c5-5346-42c5-a6d9-02227cbafda7` | `JsonReaderException`。 |
 | MQTT Authentication Failed | `cb92eac5-0588-4914-9b8b-ef203174150f` | `NotAuthorized`。 |
+| MQTT Topic Mismatch | `92721cb5-7e5d-48f2-b86f-777e93107b16` | `NotAuthorized`（MQTT 5 SUBACK）。 |
 
 ### 4.3 情境說明
 
@@ -92,6 +96,7 @@
 - **Broker Unavailable**：停止 Mosquitto 與 JSON Publisher，Collector 連線至 `127.0.0.1:1883` 時產生 `MqttCommunicationException`，並正規化為 `BrokerUnavailable`；收集完成後服務已恢復。
 - **Payload Invalid**：Mosquitto 保持運作，但停止 JSON Publisher、改用 Invalid Payload Publisher 對同一 topic 發送純文字。100 筆資料均被 JSON Parser 拒絕並正規化為 `PayloadInvalid`；收集完成後已恢復正常 JSON Publisher。
 - **Authentication Failed**：在隔離的帳密 Broker 建立研究用帳號，並讓 Device 使用錯誤密碼連線。100 筆資料皆收到 `NotAuthorized`，並正規化為 `AuthenticationFailed`；收集完成後已停止隔離 Broker、移除帳密設定，並還原至正常 MQTT Broker。
+- **Topic Mismatch**：自建 MQTT 5 Topic Rejection Simulator 會接受 CONNECT、再對目標 topic 的 SUBSCRIBE 回覆 `NotAuthorized` SUBACK。100 個 Run 產生 300 筆訂閱拒絕紀錄，皆正規化為 `TopicMismatch`；收集完成後已停止 Simulator 並還原至正常 MQTT Broker。這個情境驗證的是「連線成功、訂閱被明確拒絕」的 topic 存取異常，不是單純未收到訊息的 Timeout。
 
 #### OPC UA
 
@@ -105,24 +110,23 @@
 
 Modbus 的四種情境已另行建立第一版受控環境 ML baseline：400 個 Run、1,600 筆紀錄，以 Experiment Run 為單位切分訓練、驗證與測試資料。Logistic Regression、Random Forest 與 SVM 在此受控資料上的 weighted F1 均為 1.000。詳細方法、輸出與限制見 [ModbusMlBaseline.md](ModbusMlBaseline.md)。
 
-此數值只證明資料管線、標註與模型訓練流程能運作；因 Simulator 條件具高度可分性、測試 Run 數有限，**不可描述為現場工業環境的泛化效能**。MQTT 的 400 個正式 Run 目前尚未加入跨協定 ML 成績。
+此數值只證明資料管線、標註與模型訓練流程能運作；因 Simulator 條件具高度可分性、測試 Run 數有限，**不可描述為現場工業環境的泛化效能**。MQTT 的 500 個正式 Run 目前尚未加入跨協定 ML 成績。
 
 Rule-based 與 RAG 診斷功能已在專案中實作；後續可使用這些正式 Experiment ID 對照 Ground Truth，評估 Top-1／Top-3 Accuracy、診斷時間與解釋品質。
 
 ## 6. 已知限制
 
 1. 本報告以本機 Docker 與外部模擬服務的受控條件為主，尚未使用真實 PLC、工業網路延遲或現場設備資料。
-2. 正式資料目前包含 Modbus TCP 四種、MQTT 四種，以及 OPC UA 五種受控情境；尚未建立可重複產生並保存為 `SessionDisconnected` 的正式資料集。
-3. Device protocol settings 已可設定 Modbus Slave／Register、OPC UA NodeId／安全連線與 MQTT 帳密等條件；但 MQTT `TopicMismatch` 仍需要 Broker ACL 或其他可明確拒絕訂閱的受控模擬器，才能形成語意正確的正式資料。
+2. 正式資料目前包含 Modbus TCP 四種、MQTT 五種，以及 OPC UA 五種受控情境；尚未建立可重複產生並保存為 `SessionDisconnected` 的正式資料集。
+3. `TopicMismatch` 的 Simulator 為最小 MQTT 5 協定端點，目的是精確控制 SUBACK 拒絕碼；後續若要評估真實 Broker ACL 差異，仍應以 Mosquitto、EMQX 等 Broker 的 ACL 設定重複實驗。
 4. 某些情境的每 Run 紀錄數不同，原因是輪詢頻率、訊息到達頻率與重試機制不同；比較資料量時應同時報告 Run 數與紀錄數。
 5. 實驗資料位於 Docker PostgreSQL Volume；Git commit 保存程式、Compose 與文件，**不會自動保存資料庫內容**。重要研究資料應另外匯出 CSV 並備份。
 
 ## 7. 下一步
 
 1. 針對 OPC UA Server 重啟或 Endpoint 不可用情境，設計可控的 100 次 Run `SessionDisconnected` 故障實驗。
-2. 建置具 ACL 的 MQTT Simulator，收集語意正確的 `TopicMismatch` 正式資料。
-3. 匯出完成的正式資料集，將 MQTT 與未來 OPC UA 資料納入跨協定或分協定的 ML 比較。
-4. 以相同 Ground Truth 進行 Rule-based、ML 與 RAG 的公平評估，並記錄正確率、延遲、可解釋性與錯誤案例。
+2. 匯出完成的正式資料集，將 MQTT 與未來 OPC UA 資料納入跨協定或分協定的 ML 比較。
+3. 以相同 Ground Truth 進行 Rule-based、ML 與 RAG 的公平評估，並記錄正確率、延遲、可解釋性與錯誤案例。
 
 ## 8. 重現與查詢
 

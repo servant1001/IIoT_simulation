@@ -63,6 +63,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | MQTT | `BrokerUnavailable` | 停止 Mosquitto，仍連到 port 1883。 | `-ProtocolType 3 -ActualFaultType 16 -TargetHost 127.0.0.1 -Port 1883` |
 | MQTT | `PayloadInvalid` | Mosquitto 運作；持續發布非 JSON 字串至預設 topic。 | `-ProtocolType 3 -ActualFaultType 18 -TargetHost 127.0.0.1 -Port 1883` |
 | MQTT | `AuthenticationFailed` | 啟動隔離的帳密 Broker，並讓目標 Device 使用錯誤密碼。 | `-ProtocolType 3 -ActualFaultType 6 -TargetHost 127.0.0.1 -Port 1884` |
+| MQTT | `TopicMismatch` | 啟動 MQTT 5 Topic Rejection Simulator；它接受連線、拒絕訂閱。 | `-ProtocolType 3 -ActualFaultType 17 -TargetHost 127.0.0.1 -Port 1885` |
 
 MQTT Experiment 使用預設 topic `factory/machine01/data`、QoS 1、JSON payload 驗證。正常情境需要 Publisher 在整個 Experiment 期間持續發布，例如每 0.5 至 1 秒一筆。Payload Invalid 情境則對同一 topic 發送純文字。
 
@@ -79,6 +80,15 @@ docker compose --profile fault-simulators up -d mosquitto-auth-simulator
 
 # 完成後：停止隔離 Broker，移除 Device 帳密並還原至 127.0.0.1:1883
 docker compose --profile fault-simulators stop mosquitto-auth-simulator
+```
+
+收集 MQTT `TopicMismatch` 時，啟動 Topic Rejection Simulator。它會對所有訂閱回覆 MQTT 5 `NotAuthorized` SUBACK，讓 Adapter 將訂閱遭拒正規化為 `TopicMismatch`；它不是一般 Publisher 未送訊息的 Timeout 情境。
+
+```powershell
+docker compose --profile fault-simulators up -d --build mqtt-topic-reject-simulator
+
+# 實驗完成後：停止 Simulator 並還原 Device 至 127.0.0.1:1883
+docker compose --profile fault-simulators stop mqtt-topic-reject-simulator
 ```
 
 啟動 MQTT `PayloadInvalid` 情境 Publisher 前，先停止正常 JSON Publisher，避免兩種 payload 混入同一個 Experiment；實驗完成後再恢復正常 Publisher：
@@ -107,9 +117,7 @@ docker compose --profile fault-simulators up -d --build opcua-timeout-simulator
 
 ## 目前需要補強的正式情境
 
-Device protocol settings 已可覆寫 Modbus Slave／Register、OPC UA NodeId／安全連線與 MQTT topic／帳密；`InvalidNodeId`、`CertificateError` 與 `AuthenticationFailed` 均已完成正式 100 Run 實驗。`WrongSlaveId` 亦可透過 Device settings 收集，但仍需搭配可辨識的 Modbus Simulator 條件。
-
-`TopicMismatch` 仍不應只以「沒有收到訊息」標示：需要 Broker ACL 或可控 Broker 回應，明確拒絕訂閱或 topic 存取，才可形成語意正確的正式資料。
+Device protocol settings 已可覆寫 Modbus Slave／Register、OPC UA NodeId／安全連線與 MQTT topic／帳密；`InvalidNodeId`、`CertificateError`、`AuthenticationFailed` 與 `TopicMismatch` 均已完成正式 100 Run 實驗。`WrongSlaveId` 亦可透過 Device settings 收集，但仍需搭配可辨識的 Modbus Simulator 條件。
 
 另外，OPC UA `SessionDisconnected` 雖可透過重啟 Prosys Server 驗證 Adapter 的重連行為，但目前 Collector 會在同一 Run 內重連並回傳成功資料。正式蒐集前需要可控制、可重複產生 Session／Secure Channel 中斷的 Simulator，或讓 Experiment 保存重連前的中斷事件。
 

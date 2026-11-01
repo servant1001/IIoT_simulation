@@ -48,6 +48,13 @@ services:
       - "127.0.0.1:1884:1884"
     volumes:
       - ./mosquitto/config/mosquitto-auth.conf:/mosquitto/config/mosquitto-auth.conf:ro
+  mqtt-topic-reject-simulator:
+    build:
+      context: ./modbus-simulator
+    profiles: ["fault-simulators"]
+    command: ["python", "mqtt_topic_reject_server.py"]
+    ports:
+      - "127.0.0.1:1885:1885"
   mqtt-json-publisher:
     image: eclipse-mosquitto:2
     profiles: ["mqtt-simulators"]

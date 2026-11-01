@@ -418,7 +418,7 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 - 獨立 TCP listener 在接受連線後不回覆 OPC UA 封包，已驗證回傳 `BadRequestTimeout` 時正規化為 `Timeout`。
 - Mosquitto 已驗證 QoS 1 訂閱、JSON payload 解析與 PostgreSQL `communication_records` 保存。
 - Mosquitto 重啟期間已驗證 MQTT adapter 重新連線、重新訂閱並成功接收訊息。
-- 需帳密的隔離 Mosquitto 已驗證錯誤密碼回傳 `NotAuthorized` 時正規化為 `AuthenticationFailed`；非 JSON 訊息已驗證正規化為 `PayloadInvalid`。
+- 需帳密的隔離 Mosquitto 已驗證錯誤密碼回傳 `NotAuthorized` 時正規化為 `AuthenticationFailed`；自建 MQTT 5 Topic Rejection Simulator 已驗證訂閱遭拒的 `NotAuthorized` SUBACK 會正規化為 `TopicMismatch`；非 JSON 訊息已驗證正規化為 `PayloadInvalid`。
 - MQTT `PayloadInvalid` 正式實驗 `MQTT_PAYLOAD_INVALID_100RUN_20261028` 已完成 100 個 Run；100 筆紀錄皆為 `PayloadInvalid`，錯誤碼皆為 `JsonReaderException`。實驗結束後已復原正常 JSON Publisher。
 - ML Docker image 已成功建置，並以隔離的 pipeline smoke Dataset 驗證 Logistic Regression、Random Forest、SVM 訓練、metrics、confusion matrix 與模型輸出。
 - RAG 知識檢索、結構化診斷、trace 保存與 Ground Truth 隔離已由 Unit Tests 驗證。
@@ -428,6 +428,6 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前已完成 13 種各 100 Run 的受控正式情境，共 1,300 個 Experiment Runs 與 3,400 筆通訊紀錄：Modbus TCP 四種、MQTT 四種（含隔離帳密 Broker 的 `AuthenticationFailed`）與 OPC UA 五種。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。後續可依 [docs/Dataset.md](docs/Dataset.md) 收集 `SessionDisconnected`、`TopicMismatch` 等情境，再執行跨協定訓練與 Phase 10 RAG 評估。
+目前已完成 14 種各 100 Run 的受控正式情境，共 1,400 個 Experiment Runs 與 3,700 筆通訊紀錄：Modbus TCP 四種、MQTT 五種（含 `AuthenticationFailed` 與 `TopicMismatch`）與 OPC UA 五種。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。後續可依 [docs/Dataset.md](docs/Dataset.md) 收集 `SessionDisconnected` 等情境，再執行跨協定訓練與 Phase 10 RAG 評估。
 
-截至 2026-10-30 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
+截至 2026-10-31 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。

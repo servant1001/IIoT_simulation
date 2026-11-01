@@ -1,9 +1,17 @@
+using MQTTnet;
 using IIoT.FaultDiagnosis.Domain.Enums;
 
 namespace IIoT.FaultDiagnosis.Protocols.Mqtt;
 
 public static class MqttFaultNormalizer
 {
+    public static FaultType NormalizeSubscriptionResult(MqttClientSubscribeResultCode resultCode) =>
+        resultCode is MqttClientSubscribeResultCode.GrantedQoS0 or
+            MqttClientSubscribeResultCode.GrantedQoS1 or
+            MqttClientSubscribeResultCode.GrantedQoS2
+            ? FaultType.None
+            : FaultType.TopicMismatch;
+
     public static FaultType Normalize(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
