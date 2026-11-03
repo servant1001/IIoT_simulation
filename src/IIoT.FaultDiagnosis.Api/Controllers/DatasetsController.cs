@@ -13,15 +13,17 @@ public sealed class DatasetsController(IDatasetService datasetService) : Control
         [FromQuery] ProtocolType? protocolType,
         [FromQuery] FaultType? actualFaultType,
         [FromQuery] bool onlyDiagnosed,
+        [FromQuery] Guid[]? experimentIds,
         CancellationToken cancellationToken)
     {
-        var export = await datasetService.ExportAsync(new DatasetQuery(protocolType, actualFaultType, onlyDiagnosed), cancellationToken);
+        var export = await datasetService.ExportAsync(new DatasetQuery(protocolType, actualFaultType, onlyDiagnosed, experimentIds), cancellationToken);
         return File(export.Content, "text/csv; charset=utf-8", export.FileName);
     }
 
     [HttpGet("summary")]
     public async Task<ActionResult<DatasetSummary>> Summary(
         [FromQuery] int minimumRunsPerFault = 100,
+        [FromQuery] Guid[]? experimentIds = null,
         CancellationToken cancellationToken = default)
     {
         if (minimumRunsPerFault < 1)
@@ -29,6 +31,6 @@ public sealed class DatasetsController(IDatasetService datasetService) : Control
             return BadRequest(new { error = "minimumRunsPerFault must be at least 1." });
         }
 
-        return Ok(await datasetService.GetSummaryAsync(minimumRunsPerFault, cancellationToken));
+        return Ok(await datasetService.GetSummaryAsync(minimumRunsPerFault, experimentIds, cancellationToken));
     }
 }

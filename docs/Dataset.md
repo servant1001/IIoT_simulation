@@ -1,6 +1,6 @@
 # Phase 8 正式資料集
 
-本資料集由完成實驗所產生的 `communication_records` 建立。匯出 API 只選擇具有 `experiment_id` 的紀錄，確保每一列都有來自 Experiment 的 Ground Truth；手動裝置連線測試不屬於正式資料集。
+本資料集由完成實驗所產生的 `communication_records` 建立。匯出 API 只選擇 `Experiment` 與所屬 `ExperimentRun` 均為 `Completed`、且具有 `experiment_id` 的紀錄，確保每一列都有可完成追溯的 Ground Truth；手動裝置連線測試、Stopped 或半途失敗的實驗不屬於正式資料集。
 
 ## 標籤規則
 
@@ -24,6 +24,8 @@
 | `raw_request`、`raw_response`、`parsed_value` | 原始通訊與解析內容 |
 
 CSV 使用 UTF-8；非空白值會加上雙引號，並正確跳脫內嵌的雙引號與逗號。
+
+若要建立可重現的正式快照，可在 export 與 summary 端點重複加入 `experimentIds` query parameter。這會只選取指定的 Completed Experiment／Run，排除小型驗證或其他已完成的 exploratory 實驗。
 
 ## 收集與驗收
 

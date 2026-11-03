@@ -14,6 +14,7 @@ public sealed class DatasetService(IDatasetRepository repository) : IDatasetServ
             .Where(record => query.ProtocolType is null || record.ProtocolType == query.ProtocolType)
             .Where(record => query.ActualFaultType is null || record.ActualFaultType == query.ActualFaultType)
             .Where(record => !query.OnlyDiagnosed || record.PredictedFaultType is not null)
+            .Where(record => query.ExperimentIds is null || query.ExperimentIds.Contains(record.ExperimentId))
             .OrderBy(record => record.StartedAt)
             .ThenBy(record => record.CommunicationRecordId);
 
@@ -31,7 +32,10 @@ public sealed class DatasetService(IDatasetRepository repository) : IDatasetServ
         return new DatasetExport($"iiot-fault-dataset-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.csv", Encoding.UTF8.GetBytes(builder.ToString()));
     }
 
-    public async Task<DatasetSummary> GetSummaryAsync(int minimumRunsPerFault, CancellationToken cancellationToken)
+    public async Task<DatasetSummary> GetSummaryAsync(
+        int minimumRunsPerFault,
+        IReadOnlyCollection<Guid>? experimentIds,
+        CancellationToken cancellationToken)
     {
         if (minimumRunsPerFault < 1)
         {
@@ -39,6 +43,10 @@ public sealed class DatasetService(IDatasetRepository repository) : IDatasetServ
         }
 
         var records = await repository.GetRecordsAsync(cancellationToken);
+        if (experimentIds is not null)
+        {
+            records = records.Where(record => experimentIds.Contains(record.ExperimentId)).ToList();
+        }
         var coverage = records
             .GroupBy(record => new { record.ProtocolType, record.ActualFaultType })
             .OrderBy(group => group.Key.ProtocolType)

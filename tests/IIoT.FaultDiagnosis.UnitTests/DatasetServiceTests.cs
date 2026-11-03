@@ -38,7 +38,7 @@ public sealed class DatasetServiceTests
         };
         var service = new DatasetService(new MemoryRepository(records));
 
-        var summary = await service.GetSummaryAsync(100, CancellationToken.None);
+        var summary = await service.GetSummaryAsync(100, null, CancellationToken.None);
         var coverage = Assert.Single(summary.Coverage);
 
         Assert.Equal(2, summary.RecordCount);
@@ -60,6 +60,23 @@ public sealed class DatasetServiceTests
         var csv = Encoding.UTF8.GetString(export.Content);
 
         Assert.Contains(selected.CommunicationRecordId.ToString(), csv);
+        Assert.DoesNotContain(excluded.CommunicationRecordId.ToString(), csv);
+    }
+
+    [Fact]
+    public async Task ExportAsync_OnlyIncludesSpecifiedExperimentIds()
+    {
+        var includedExperimentId = Guid.NewGuid();
+        var included = CreateRecord(includedExperimentId, Guid.NewGuid(), 1, FaultType.Timeout, null);
+        var excluded = CreateRecord(Guid.NewGuid(), Guid.NewGuid(), 1, FaultType.Timeout, null);
+        var service = new DatasetService(new MemoryRepository([included, excluded]));
+
+        var export = await service.ExportAsync(
+            new DatasetQuery(ExperimentIds: [includedExperimentId]),
+            CancellationToken.None);
+        var csv = Encoding.UTF8.GetString(export.Content);
+
+        Assert.Contains(included.CommunicationRecordId.ToString(), csv);
         Assert.DoesNotContain(excluded.CommunicationRecordId.ToString(), csv);
     }
 

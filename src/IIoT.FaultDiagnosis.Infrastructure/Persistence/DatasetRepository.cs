@@ -1,4 +1,5 @@
 using IIoT.FaultDiagnosis.Application.Datasets;
+using IIoT.FaultDiagnosis.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace IIoT.FaultDiagnosis.Infrastructure.Persistence;
@@ -9,7 +10,13 @@ public sealed class DatasetRepository(FaultDiagnosisDbContext dbContext) : IData
     {
         var records = await dbContext.CommunicationRecords
             .AsNoTracking()
-            .Where(record => record.ExperimentId != null)
+            .Where(record =>
+                record.ExperimentId != null &&
+                record.Experiment != null &&
+                record.Experiment.Status == ExperimentStatus.Completed &&
+                record.ExperimentRunId != null &&
+                record.ExperimentRun != null &&
+                record.ExperimentRun.Status == ExperimentStatus.Completed)
             .Include(record => record.Experiment)
             .Include(record => record.ExperimentRun)
             .Include(record => record.DiagnosisResults)

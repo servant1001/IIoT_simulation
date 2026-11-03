@@ -296,7 +296,7 @@ POST /api/devices/{id}/test-mqtt
 
 ## 正式 Dataset
 
-使用 Dataset API 匯出時，系統只納入具備 `experiment_id` 的通訊紀錄；由單次裝置連線測試所產生、沒有實驗 Ground Truth 的紀錄不會混入研究資料集。每一列包含實驗與 Run 識別、協定、`actual_fault_type`、`predicted_fault_type`、診斷方法與信心度，以及延遲、狀態、觀測錯誤、retry 與原始通訊資料。
+使用 Dataset API 匯出時，系統只納入 `Experiment` 與所屬 Run 均為 `Completed`、且具備 `experiment_id` 的通訊紀錄；單次裝置連線測試、Stopped 或半途失敗的實驗不會混入研究資料集。每一列包含實驗與 Run 識別、協定、`actual_fault_type`、`predicted_fault_type`、診斷方法與信心度，以及延遲、狀態、觀測錯誤、retry 與原始通訊資料。
 
 ```text
 GET /api/datasets/communication-records/export
@@ -304,7 +304,9 @@ GET /api/datasets/communication-records/export?protocolType=3&actualFaultType=Br
 GET /api/datasets/communication-records/summary?minimumRunsPerFault=100
 ```
 
-`summary` 以不同的 `experiment_run_id` 計算 Run 數，同時回傳 `recordCount`、`diagnosedRecordCount` 與 `remainingRunCount`。正式驗收目標為每個 Protocol／ActualFaultType 組合至少 100 個 runs；資料收集程序與欄位說明見 [docs/Dataset.md](docs/Dataset.md)。
+export 與 `summary` 可重複使用 `experimentIds={guid}` 限定可追溯的正式實驗集合。`summary` 以不同的 `experiment_run_id` 計算 Run 數，同時回傳 `recordCount`、`diagnosedRecordCount` 與 `remainingRunCount`。正式驗收目標為每個 Protocol／ActualFaultType 組合至少 100 個 runs；資料收集程序與欄位說明見 [docs/Dataset.md](docs/Dataset.md)。
+
+2026-11-03 已建立只含 15 個正式 Experiment 的資料快照；範圍、覆蓋率、輸出位置與完整性 hash 見 [docs/FormalDatasetSnapshot_20261103.md](docs/FormalDatasetSnapshot_20261103.md)。
 
 ### 匯出與檢查覆蓋率
 

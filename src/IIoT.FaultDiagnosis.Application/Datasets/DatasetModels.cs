@@ -25,7 +25,11 @@ public sealed record DatasetRecord(
     string? RawResponse,
     string? ParsedValue);
 
-public sealed record DatasetQuery(ProtocolType? ProtocolType = null, FaultType? ActualFaultType = null, bool OnlyDiagnosed = false);
+public sealed record DatasetQuery(
+    ProtocolType? ProtocolType = null,
+    FaultType? ActualFaultType = null,
+    bool OnlyDiagnosed = false,
+    IReadOnlyCollection<Guid>? ExperimentIds = null);
 
 public sealed record DatasetExport(string FileName, byte[] Content);
 
