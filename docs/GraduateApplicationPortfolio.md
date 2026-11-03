@@ -47,7 +47,7 @@ flowchart LR
 | 類別 | 使用工具 | 部署方式 | 實驗用途 |
 | --- | --- | --- | --- |
 | Modbus TCP | 自建 Docker Modbus Simulator（Python + `pymodbus`） | 專案內 `docker-compose.yml` 建置；公開 `127.0.0.1:1502` | 模擬 PLC 的 Slave ID `1` 與 Holding Registers `0–5`，供 Collector 以 Modbus TCP 實際讀取。 |
-| OPC UA | Prosys OPC UA Simulation Server | Windows 外部模擬器 | 模擬 OPC UA Server、Endpoint 與 NodeId，驗證節點讀取及 Endpoint／NodeId 等故障。 |
+| OPC UA | Prosys OPC UA Simulation Server 與自建 Session Disconnect Proxy | Prosys 為 Windows 外部模擬器；Proxy 為 Docker 容器 | 模擬 OPC UA Server、Endpoint、NodeId 與 Session 建立後的 transport 中斷。 |
 | MQTT | Eclipse Mosquitto 與自建 MQTT 5 Topic Rejection Simulator | Docker Compose 容器；正常 Broker 為 `127.0.0.1:1883`、帳密 Broker `127.0.0.1:1884`、訂閱拒絕端點 `127.0.0.1:1885` | 模擬 MQTT Broker、Topic、JSON 訊息發布／訂閱、帳密拒絕與 SUBACK 訂閱拒絕。 |
 | 資料庫 | PostgreSQL | Docker Compose 容器 | 儲存 Device、Experiment Run、通訊紀錄、系統指標與診斷資料。 |
 | 日誌 | Seq | Docker Compose 容器 | 集中檢視結構化日誌、錯誤與通訊事件。 |
@@ -100,10 +100,11 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - OPC UA Invalid Endpoint 正式實驗 `OPCUA_INVALID_ENDPOINT_100RUN_20261028` 已完成 100 個 Run、100 筆失敗紀錄；Server 保持運作但 Collector 指向不存在的 endpoint，所有紀錄皆正確標註為 `InvalidEndpoint`／`ServiceResultException`。
 - OPC UA Timeout 正式實驗 `OPCUA_TIMEOUT_100RUN_20261028` 已完成 100 個 Run、100 筆逾時紀錄；Docker Timeout Simulator 接受 TCP 連線但不回覆 OPC UA 封包，所有紀錄皆正確標註為 `Timeout`／`ServiceResultException`。
 - OPC UA `InvalidNodeId` 與 `CertificateError` 正式實驗各完成 100 個 Run；前者以不存在的 NodeId 取得 `BadNodeIdUnknown`，後者啟用安全連線但不信任 Client 憑證而取得 `BadSecurityChecksFailed`。兩者皆正確保存為對應的 Ground Truth。
+- OPC UA `SessionDisconnected` 正式實驗 `OPCUA_SESSION_DISCONNECTED_100RUN_RETRY_20261103` 已完成 100 個 Run、100 筆失敗紀錄；Proxy 在 Session 建立後關閉 transport，所有紀錄皆正確標註為 `SessionDisconnected`／`ServiceResultException`。
 
 ## 正在進行的實驗計畫
 
-目前已完成 14 種各 100 Run 的受控正式情境，共 1,400 個 Experiment Runs 與 3,700 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 五種。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對 `SessionDisconnected`、更多 Modbus FaultType 與更多網路條件收集正式資料，擴大資料的協定、設備與網路條件多樣性。
+目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對更多 Modbus FaultType 與更多網路條件收集正式資料，擴大資料的協定、設備與網路條件多樣性。
 
 完成收集後，將比較：
 

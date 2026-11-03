@@ -57,7 +57,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | Modbus | `IllegalAddress` | 啟動 `modbus-illegal-address-simulator`；它會回覆 Modbus Exception Code `02`。 | `-ProtocolType 1 -ActualFaultType 8 -TargetHost 127.0.0.1 -Port 1504` |
 | OPC UA | `None` | Prosys Server 開啟，使用預設 endpoint 與 `i=2258`。 | `-ProtocolType 2 -ActualFaultType 0 -TargetHost "opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer" -Port 53530` |
 | OPC UA | `InvalidEndpoint` | 設定為不存在的 endpoint path 或已關閉的 endpoint。 | `-ProtocolType 2 -ActualFaultType 12 -TargetHost "opc.tcp://127.0.0.1:53530/invalid" -Port 53530` |
-| OPC UA | `SessionDisconnected` | 實驗開始後重啟 Prosys Server。 | 目前僅適合功能驗證：Adapter 會自動重連，重啟後的 Run 可能仍保存為成功 `None`，不可直接視為正式 `SessionDisconnected` Dataset。 |
+| OPC UA | `SessionDisconnected` | 啟動 Prosys 與 Session Disconnect Proxy；Proxy 在 Session 建立後關閉 transport。 | `-ProtocolType 2 -ActualFaultType 15 -TargetHost "opc.tcp://127.0.0.1:53532/OPCUA/SimulationServer" -Port 53532 -ProtocolSettingsJson $sessionSettings` |
 | OPC UA | `Timeout` | 啟動 `opcua-timeout-simulator`；它接受 TCP 連線但不回覆 OPC UA 封包。 | `-ProtocolType 2 -ActualFaultType 4 -TargetHost "opc.tcp://127.0.0.1:53531" -Port 53531` |
 | MQTT | `None` | Mosquitto 運作；持續發布合法 JSON 至 `factory/machine01/data`。 | `-ProtocolType 3 -ActualFaultType 0 -TargetHost 127.0.0.1 -Port 1883` |
 | MQTT | `BrokerUnavailable` | 停止 Mosquitto，仍連到 port 1883。 | `-ProtocolType 3 -ActualFaultType 16 -TargetHost 127.0.0.1 -Port 1883` |
@@ -115,11 +115,32 @@ docker compose --profile fault-simulators up -d --build `
 docker compose --profile fault-simulators up -d --build opcua-timeout-simulator
 ```
 
+收集 OPC UA `SessionDisconnected` 時，先保持 Prosys Server 開啟，再啟動 TCP Proxy。此情境用讀取前延遲確保 Session 已建立，用關閉當次自動重連確保 Collector 保存 transport 中斷事件；完成後要還原正常 Device 設定。
+
+```powershell
+docker compose --profile fault-simulators up -d --build opcua-session-disconnect-proxy
+
+$sessionSettings = @{
+  opcUaNodeIds = @('i=2258')
+  opcUaReadDelayMs = 2000
+  opcUaReconnectOnSessionDisconnect = $false
+} | ConvertTo-Json -Depth 3 -Compress
+
+.\tools\Start-Experiment.ps1 `
+  -Name "OPCUA_SESSION_DISCONNECTED_100RUN" `
+  -ProtocolType 2 `
+  -ActualFaultType 15 `
+  -TargetHost "opc.tcp://127.0.0.1:53532/OPCUA/SimulationServer" `
+  -Port 53532 `
+  -ProtocolSettingsJson $sessionSettings
+
+# 實驗完成後：停止 Proxy，並將 Device 還原為正常設定。
+docker compose --profile fault-simulators stop opcua-session-disconnect-proxy
+```
+
 ## 目前需要補強的正式情境
 
 Device protocol settings 已可覆寫 Modbus Slave／Register、OPC UA NodeId／安全連線與 MQTT topic／帳密；`InvalidNodeId`、`CertificateError`、`AuthenticationFailed` 與 `TopicMismatch` 均已完成正式 100 Run 實驗。`WrongSlaveId` 亦可透過 Device settings 收集，但仍需搭配可辨識的 Modbus Simulator 條件。
-
-另外，OPC UA `SessionDisconnected` 雖可透過重啟 Prosys Server 驗證 Adapter 的重連行為，但目前 Collector 會在同一 Run 內重連並回傳成功資料。正式蒐集前需要可控制、可重複產生 Session／Secure Channel 中斷的 Simulator，或讓 Experiment 保存重連前的中斷事件。
 
 不要將單次 `/test`、`/test-opc-ua`、`/test-mqtt` 的紀錄混入正式 Dataset。
 

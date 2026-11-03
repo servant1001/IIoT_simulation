@@ -107,6 +107,15 @@ services:
     profiles: ["fault-simulators"]
     ports:
       - "127.0.0.1:53531:53531"
+  opcua-session-disconnect-proxy:
+    build:
+      context: ./modbus-simulator
+    profiles: ["fault-simulators"]
+    command: ["python", "opcua_session_disconnect_proxy.py"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:53532:53532"
   ml-lab:
     build:
       context: ./ml

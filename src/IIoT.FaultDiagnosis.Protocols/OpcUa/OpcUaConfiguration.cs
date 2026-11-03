@@ -5,7 +5,9 @@ public sealed record OpcUaConfiguration(
     IReadOnlyList<string> NodeIds,
     int ReconnectDelayMs = 1000,
     bool UseSecurity = false,
-    int OperationTimeoutMs = 10000)
+    int OperationTimeoutMs = 10000,
+    int ReadDelayMs = 0,
+    bool ReconnectOnSessionDisconnect = true)
 {
     public void Validate()
     {
@@ -15,5 +17,6 @@ public sealed record OpcUaConfiguration(
             throw new ArgumentException("At least one OPC UA NodeId is required.", nameof(NodeIds));
         if (ReconnectDelayMs < 100) throw new ArgumentOutOfRangeException(nameof(ReconnectDelayMs));
         if (OperationTimeoutMs < 100) throw new ArgumentOutOfRangeException(nameof(OperationTimeoutMs));
+        if (ReadDelayMs < 0) throw new ArgumentOutOfRangeException(nameof(ReadDelayMs));
     }
 }

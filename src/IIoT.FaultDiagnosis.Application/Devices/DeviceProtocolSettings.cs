@@ -13,6 +13,8 @@ public sealed record DeviceProtocolSettings(
     IReadOnlyList<string>? OpcUaNodeIds = null,
     bool OpcUaUseSecurity = false,
     int OpcUaOperationTimeoutMs = 10000,
+    int OpcUaReadDelayMs = 0,
+    bool OpcUaReconnectOnSessionDisconnect = true,
     string MqttTopic = "factory/machine01/data",
     int MqttQualityOfService = 1,
     int MqttReceiveTimeoutMs = 10000,
@@ -34,7 +36,7 @@ public sealed record DeviceProtocolSettings(
                 ToModbusConfiguration().Validate();
                 break;
             case ProtocolType.OpcUa:
-                new OpcUaConfiguration("opc.tcp://placeholder:4840", EffectiveOpcUaNodeIds, UseSecurity: OpcUaUseSecurity, OperationTimeoutMs: OpcUaOperationTimeoutMs).Validate();
+                new OpcUaConfiguration("opc.tcp://placeholder:4840", EffectiveOpcUaNodeIds, UseSecurity: OpcUaUseSecurity, OperationTimeoutMs: OpcUaOperationTimeoutMs, ReadDelayMs: OpcUaReadDelayMs, ReconnectOnSessionDisconnect: OpcUaReconnectOnSessionDisconnect).Validate();
                 break;
             case ProtocolType.Mqtt:
                 ToMqttConfiguration().Validate();
@@ -51,7 +53,9 @@ public sealed record DeviceProtocolSettings(
         endpoint,
         EffectiveOpcUaNodeIds,
         UseSecurity: OpcUaUseSecurity,
-        OperationTimeoutMs: OpcUaOperationTimeoutMs);
+        OperationTimeoutMs: OpcUaOperationTimeoutMs,
+        ReadDelayMs: OpcUaReadDelayMs,
+        ReconnectOnSessionDisconnect: OpcUaReconnectOnSessionDisconnect);
 
     public MqttConfiguration ToMqttConfiguration() => new(
         MqttTopic,

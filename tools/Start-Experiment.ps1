@@ -29,6 +29,7 @@ param(
     [int] $PollingIntervalMs = 1000,
     [ValidateRange(1, 10000)]
     [int] $TagCount = 6,
+    [string] $ProtocolSettingsJson,
     [string] $ApiBaseUrl = "http://127.0.0.1:5080"
 )
 
@@ -52,7 +53,18 @@ $targetBody = @{
     host = $TargetHost
     port = $Port
     isEnabled = $true
-} | ConvertTo-Json
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ProtocolSettingsJson)) {
+    try {
+        $targetBody.settings = $ProtocolSettingsJson | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+    }
+    catch {
+        throw "ProtocolSettingsJson must be valid JSON. $($_.Exception.Message)"
+    }
+}
+
+$targetBody = $targetBody | ConvertTo-Json -Depth 6
 
 if ($null -eq $target) {
     $target = Invoke-RestMethod -Method Post -Uri "$ApiBaseUrl/api/devices" -ContentType "application/json" -Body $targetBody

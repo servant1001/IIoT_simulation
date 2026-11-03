@@ -20,6 +20,11 @@ public sealed class OpcUaConfigurationTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new OpcUaConfiguration("opc.tcp://localhost:4840", ["i=2258"], OperationTimeoutMs: 99).Validate());
 
+    [Fact]
+    public void Validate_RejectsANegativeReadDelay() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new OpcUaConfiguration("opc.tcp://localhost:4840", ["i=2258"], ReadDelayMs: -1).Validate());
+
     [Theory]
     [InlineData("BadNodeIdUnknown", FaultType.InvalidNodeId)]
     [InlineData("Certificate validation failed", FaultType.CertificateError)]

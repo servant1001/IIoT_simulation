@@ -104,6 +104,11 @@ public sealed class OpcUaProtocolAdapter : IOpcUaProtocolAdapter
 
         try
         {
+            if (configuration.ReadDelayMs > 0)
+            {
+                await Task.Delay(configuration.ReadDelayMs, cancellationToken);
+            }
+
             return await ReadNodesAsync(session, configuration.NodeIds, raw, cancellationToken);
         }
         catch (OperationCanceledException)
@@ -114,6 +119,11 @@ public sealed class OpcUaProtocolAdapter : IOpcUaProtocolAdapter
         {
             var faultType = OpcUaFaultNormalizer.Normalize(exception);
             if (faultType != FaultType.SessionDisconnected)
+            {
+                return CollectionResult.Failed(faultType, exception.GetType().Name, exception.Message, raw);
+            }
+
+            if (!configuration.ReconnectOnSessionDisconnect)
             {
                 return CollectionResult.Failed(faultType, exception.GetType().Name, exception.Message, raw);
             }

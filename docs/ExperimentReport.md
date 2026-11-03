@@ -1,6 +1,6 @@
 # IIoT 通訊故障診斷實驗報告
 
-> 最後核對日期：2026-10-31（Asia/Taipei）<br>
+> 最後核對日期：2026-11-03（Asia/Taipei）<br>
 > 資料來源：本機 API 與 PostgreSQL 中的正式 Experiment Run／Communication Record。  
 > 範圍：僅列入已完成 100 次 Run 的受控正式實驗；不含單次驗證、手動測試、半途停止或開發期間的紀錄。
 
@@ -27,6 +27,7 @@
 | MQTT Invalid Payload Publisher | MQTT 無效資料情境 | 對相同 topic 持續發送純文字 `not-json-payload`。 |
 | MQTT Authentication Simulator | MQTT 認證失敗情境 | 隔離於 `127.0.0.1:1884` 的 Mosquitto；僅允許研究用帳號登入。 |
 | MQTT Topic Rejection Simulator | MQTT topic 不符情境 | 專案內最小 MQTT 5 協定端點，監聽 `127.0.0.1:1885`，接受連線後對訂閱回覆標準 `NotAuthorized` SUBACK。 |
+| OPC UA Session Disconnect Proxy | OPC UA Session 中斷情境 | 專案內 TCP proxy，監聽 `127.0.0.1:53532`、轉送至 Prosys；在 Session 建立後關閉 transport。 |
 
 正式實驗開始前，`tools/Start-Experiment.ps1` 會只啟用當次目標 Device，避免其他 Collector 來源混入資料。完整操作流程見 [ExperimentCollectionGuide.md](ExperimentCollectionGuide.md)。
 
@@ -37,6 +38,7 @@
 - MQTT `PayloadInvalid` 收集期間會停止正常 JSON Publisher；完成後停止無效 Payload Publisher 並恢復正常 Publisher，避免混入不同資料型態。
 - MQTT `AuthenticationFailed` 使用獨立 Broker 與錯誤密碼；完成後停止該 Broker，並將目標 Device 還原至正常 MQTT Broker。
 - MQTT `TopicMismatch` 使用獨立協定端點，確認連線成功而訂閱遭拒後才開始正式收集；完成後停止 Simulator 並還原正常 MQTT Broker。
+- OPC UA `SessionDisconnected` 先以 Proxy 與 Prosys 執行 1 Run 驗證，再以讀取前延遲和停用當次自動重連，保存 transport 中斷的原始故障事件。
 - 同一 Run 可能產生多筆 Communication Record：正常輪詢可取得多筆成功資料；部分錯誤則可能因重試而產生多筆 Timeout／Failure。因此，Run 數與紀錄數不必相同。
 - 統計由 API 的 Experiment、Run、Records 端點於報告日期重新核對，而非由手動估算。
 
@@ -55,12 +57,13 @@
 | OPC UA | Timeout | `OPCUA_TIMEOUT_100RUN_20261028` | 100 | 100 | 0 | 0 | 100 | `Timeout (4)`：100 筆 |
 | OPC UA | Invalid NodeId | `OPCUA_INVALID_NODE_ID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `InvalidNodeId (13)`：100 筆 |
 | OPC UA | Certificate Error | `OPCUA_CERTIFICATE_ERROR_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `CertificateError (14)`：100 筆 |
+| OPC UA | Session Disconnected | `OPCUA_SESSION_DISCONNECTED_100RUN_RETRY_20261103` | 100 | 100 | 0 | 100 | 0 | `SessionDisconnected (15)`：100 筆 |
 | MQTT | 正常 JSON | `MQTT_NORMAL_100RUN_20261028` | 100 | 700 | 700 | 0 | 0 | `None (0)`：700 筆 |
 | MQTT | Broker Unavailable | `MQTT_BROKER_UNAVAILABLE_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `BrokerUnavailable (16)`：100 筆 |
 | MQTT | Payload Invalid | `MQTT_PAYLOAD_INVALID_100RUN_20261028` | 100 | 100 | 0 | 100 | 0 | `PayloadInvalid (18)`：100 筆 |
 | MQTT | Authentication Failed | `MQTT_AUTHENTICATION_FAILED_100RUN_20261029` | 100 | 100 | 0 | 100 | 0 | `AuthenticationFailed (6)`：100 筆 |
 | MQTT | Topic Mismatch | `MQTT_TOPIC_MISMATCH_100RUN_20261030` | 100 | 300 | 0 | 300 | 0 | `TopicMismatch (17)`：300 筆 |
-| **合計** | **14 種情境** |  | **1,400** | **3,700** | **2,100** | **1,300** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
+| **合計** | **15 種情境** |  | **1,500** | **3,800** | **2,100** | **1,400** | **300** | **所有正式紀錄皆與對應 Ground Truth 一致** |
 
 ### 4.2 可追溯的 Experiment ID 與錯誤碼
 
@@ -75,6 +78,7 @@
 | OPC UA Timeout | `19ac5f4a-2a24-45eb-bbbf-9831781b2225` | `ServiceResultException`（Simulator 不回覆，Client 回傳 `BadRequestTimeout`）。 |
 | OPC UA Invalid NodeId | `03ac8c47-2836-41cd-bd54-d3223ed09b5f` | `ServiceResultException`（Prosys 回傳 `BadNodeIdUnknown`）。 |
 | OPC UA Certificate Error | `917dd2ae-84d0-473a-ae44-8759c5c375a0` | `ServiceResultException`（Prosys 回傳 `BadSecurityChecksFailed`）。 |
+| OPC UA Session Disconnected | `2692f4c9-868c-4bc4-98e5-bc6ca199339a` | `ServiceResultException`（Proxy 在 Session 建立後關閉 transport）。 |
 | MQTT 正常 JSON | `cd71f7be-3994-4f45-996e-95d8c1050884` | 無錯誤碼。 |
 | MQTT Broker Unavailable | `56fc4694-becd-43d4-be0c-30772b2174b1` | `MqttCommunicationException`。 |
 | MQTT Payload Invalid | `a02c06c5-5346-42c5-a6d9-02227cbafda7` | `JsonReaderException`。 |
@@ -105,6 +109,7 @@
 - **Timeout**：Docker 內的 `opcua-timeout-simulator` 接受 TCP 連線但不回覆 OPC UA 封包。100 筆資料皆在預設逾時與重試後回傳 `BadRequestTimeout`，並正規化為 `Timeout`／`ServiceResultException`。每個 Run 約需 43 秒；收集完成後已停止 Simulator，目標 Device 已恢復為正常 Prosys endpoint。
 - **Invalid NodeId**：透過 Device protocol settings 將 NodeId 設為不存在的 `i=999999`。100 筆資料皆回傳 `BadNodeIdUnknown`，並正規化為 `InvalidNodeId`／`ServiceResultException`；收集完成後已恢復預設 NodeId `i=2258`。
 - **Certificate Error**：透過 Device protocol settings 啟用 OPC UA 安全連線，但不將 Client 憑證加入 Prosys 信任清單。100 筆資料皆回傳 `BadSecurityChecksFailed`，並正規化為 `CertificateError`／`ServiceResultException`；收集完成後已恢復不使用安全連線的設定。
+- **Session Disconnected**：Prosys 維持運作，Collector 經由 Session Disconnect Proxy 建立 Session；Proxy 隨後關閉 transport。Device settings 設定讀取前延遲 2 秒、關閉該情境的自動重連，確保保存的是中斷事件而非重連後的成功讀取。100 筆資料皆為 `SessionDisconnected`／`ServiceResultException`；完成後已停止 Proxy 並恢復預設重連設定。
 
 ## 5. 初步 ML 與診斷工作
 
@@ -117,16 +122,15 @@ Rule-based 與 RAG 診斷功能已在專案中實作；後續可使用這些正�
 ## 6. 已知限制
 
 1. 本報告以本機 Docker 與外部模擬服務的受控條件為主，尚未使用真實 PLC、工業網路延遲或現場設備資料。
-2. 正式資料目前包含 Modbus TCP 四種、MQTT 五種，以及 OPC UA 五種受控情境；尚未建立可重複產生並保存為 `SessionDisconnected` 的正式資料集。
-3. `TopicMismatch` 的 Simulator 為最小 MQTT 5 協定端點，目的是精確控制 SUBACK 拒絕碼；後續若要評估真實 Broker ACL 差異，仍應以 Mosquitto、EMQX 等 Broker 的 ACL 設定重複實驗。
+2. 正式資料目前包含 Modbus TCP 四種、MQTT 五種，以及 OPC UA 六種受控情境；各情境都屬受控模擬器資料，尚未涵蓋真實 PLC、工業網路延遲與長期現場漂移。
+3. `TopicMismatch` 與 `SessionDisconnected` 分別使用最小 MQTT 5 協定端點與 TCP proxy，以精確控制協定拒絕碼與 transport 中斷；後續仍應以真實 Broker ACL 與工業 OPC UA Server 重複實驗，比較行為差異。
 4. 某些情境的每 Run 紀錄數不同，原因是輪詢頻率、訊息到達頻率與重試機制不同；比較資料量時應同時報告 Run 數與紀錄數。
 5. 實驗資料位於 Docker PostgreSQL Volume；Git commit 保存程式、Compose 與文件，**不會自動保存資料庫內容**。重要研究資料應另外匯出 CSV 並備份。
 
 ## 7. 下一步
 
-1. 針對 OPC UA Server 重啟或 Endpoint 不可用情境，設計可控的 100 次 Run `SessionDisconnected` 故障實驗。
-2. 匯出完成的正式資料集，將 MQTT 與未來 OPC UA 資料納入跨協定或分協定的 ML 比較。
-3. 以相同 Ground Truth 進行 Rule-based、ML 與 RAG 的公平評估，並記錄正確率、延遲、可解釋性與錯誤案例。
+1. 匯出完成的正式資料集，將 MQTT 與 OPC UA 資料納入跨協定或分協定的 ML 比較。
+2. 以相同 Ground Truth 進行 Rule-based、ML 與 RAG 的公平評估，並記錄正確率、延遲、可解釋性與錯誤案例。
 
 ## 8. 重現與查詢
 

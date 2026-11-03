@@ -415,6 +415,7 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 - Unit Tests 46/46 通過。
 - PostgreSQL、Seq、API health check 與 Seq 日誌接收已驗證。
 - Prosys OPC UA Simulation Server 已驗證正常讀取、無效 NodeId、無效 Endpoint、Server 重啟後 Session 重連，以及安全端點拒絕未受信任用戶端憑證時的 `CertificateError`。
+- Prosys 搭配自建 TCP Session Disconnect Proxy，已驗證 Session 建立後的 transport 中斷會正規化為 `SessionDisconnected`。
 - 獨立 TCP listener 在接受連線後不回覆 OPC UA 封包，已驗證回傳 `BadRequestTimeout` 時正規化為 `Timeout`。
 - Mosquitto 已驗證 QoS 1 訂閱、JSON payload 解析與 PostgreSQL `communication_records` 保存。
 - Mosquitto 重啟期間已驗證 MQTT adapter 重新連線、重新訂閱並成功接收訊息。
@@ -428,6 +429,6 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前已完成 14 種各 100 Run 的受控正式情境，共 1,400 個 Experiment Runs 與 3,700 筆通訊紀錄：Modbus TCP 四種、MQTT 五種（含 `AuthenticationFailed` 與 `TopicMismatch`）與 OPC UA 五種。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。後續可依 [docs/Dataset.md](docs/Dataset.md) 收集 `SessionDisconnected` 等情境，再執行跨協定訓練與 Phase 10 RAG 評估。
+目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種（含 `AuthenticationFailed` 與 `TopicMismatch`）與 OPC UA 六種（含 `SessionDisconnected`）。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。下一步可依 [docs/Dataset.md](docs/Dataset.md) 匯出完成的正式資料並執行跨協定訓練與 Phase 10 RAG 評估。
 
-截至 2026-10-31 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
+截至 2026-11-03 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
