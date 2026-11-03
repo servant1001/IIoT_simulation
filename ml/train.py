@@ -204,6 +204,9 @@ def score(model: Pipeline, features: pd.DataFrame, labels: pd.Series) -> dict[st
 def save_confusion_matrix(labels: pd.Series, predictions: Iterable[str], title: str, path: Path) -> None:
     classes = sorted(labels.unique())
     matrix = confusion_matrix(labels, predictions, labels=classes)
+    pd.DataFrame(matrix, index=classes, columns=classes).rename_axis("actual_fault_type").to_csv(
+        path.with_suffix(".csv"), index_label="actual_fault_type"
+    )
     figure, axis = plt.subplots(figsize=(max(6, len(classes)), max(5, len(classes))))
     image = axis.imshow(matrix, interpolation="nearest", cmap="Blues")
     figure.colorbar(image, ax=axis)

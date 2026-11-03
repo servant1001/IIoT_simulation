@@ -71,6 +71,27 @@ ML 使用以 Run 為界的切分，以降低同一 Run 的多筆紀錄同時出�
 
 訓練輸出保存在未納入 Git 的 `ml/outputs/formal-20261103/`：`leaderboard.csv`、`metrics.json`、三個模型檔與 confusion matrix。這些檔案應和正式 CSV 快照一併備份。
 
+### 3.4 混淆矩陣摘要
+
+混淆矩陣的列為實際 FaultType、欄為預測 FaultType；PNG 與同名 CSV 均已輸出至 `ml/outputs/formal-20261103/`。CSV 使數值可被重新檢查，PNG 適合作為書審附件或口試投影片。
+
+| 模型 | 對角線正確分類 | 非對角線誤判 | 解讀 |
+| --- | ---: | ---: | --- |
+| Logistic Regression | 26 / 26 | 0 | 12 類皆落在對角線。 |
+| Random Forest | 26 / 26 | 0 | 12 類皆落在對角線。 |
+| SVM | 19 / 26 | 7 | 錯誤集中在少量異常類別，而非正常類別。 |
+
+SVM 測試混淆矩陣的所有非零非對角線項目如下；未列出的項目均為 0。
+
+| 實際 FaultType | 預測 FaultType | 筆數 |
+| --- | --- | ---: |
+| `CertificateError` | `InvalidEndpoint` | 1 |
+| `InvalidNodeId` | `CertificateError` | 1 |
+| `IllegalAddress` | `AuthenticationFailed` | 2 |
+| `TopicMismatch` | `AuthenticationFailed` | 3 |
+
+`svm_confusion_matrix.csv` 同時顯示 `IllegalAddress` 有 1 筆、`TopicMismatch` 有 0 筆正確分類；其餘類別的測試樣本皆被 SVM 正確分類。Logistic Regression 與 Random Forest 的矩陣各有 26 筆對角線值、無任何非對角線值。
+
 ## 4. 解讀與限制
 
 1. **這不是三者完全對等的排名。** Rule-based 與 RAG 的數字來自全量逐筆線上診斷；ML 是對未參與訓練的 Run 保留集評估，且只有 26 筆測試紀錄。因此，不能以 100.00% 對 42.11% 直接斷言 ML 在任何情境都優於 RAG。
@@ -79,7 +100,15 @@ ML 使用以 Run 為界的切分，以降低同一 Run 的多筆紀錄同時出�
 4. **RAG 仍需人工評閱。** 本次已量測故障分類與診斷時間，但尚未以人工標註量測 Explanation Quality、來源充分性或 Hallucination Rate。
 5. **需擴大驗證。** 後續應增加不同設備、網路延遲／抖動、錯誤訊息變體與跨日期資料，並採多個保留 Run 或交叉驗證，取得較穩定的 ML 泛化估計。
 
-## 5. 可重現步驟
+## 5. 實驗結論
+
+1. **平台與資料流程已被正式驗證。** 三種協定的 15 種受控情境均有 100 個完成 Run，並能從實際網路通訊、Ground Truth、資料庫紀錄、CSV 快照一路追溯至三種診斷方法的評估。
+2. **現有 Rule-based 規則覆蓋不足。** 18.42% 的全量 Accuracy 顯示規則目前只涵蓋部分 Modbus 異常；它缺少正常狀態、OPC UA 多數錯誤與 MQTT 錯誤的規則。
+3. **RAG 已擴大異常覆蓋，但知識庫仍有明確缺口。** RAG 能正確辨識 10 種異常情境，然而正常狀態與 `SessionDisconnected` 不在目前候選知識中，故 Top-1 與 Top-3 同為 42.11%。
+4. **ML 在受控資料上可有效區分故障特徵。** Logistic Regression 與 Random Forest 在 Run-aware 保留測試達 100.00%，而 SVM 的混淆矩陣呈現它對少數異常類別仍有混淆。這支持 ML pipeline 作為研究基準，但不等同於已證明產線泛化能力。
+5. **下一輪研究應著重外部效度與解釋品質。** 補齊正常／SessionDisconnected 的規則與 RAG 知識、增加不同設備和網路條件的資料、擴大保留測試集，並由人工量測 RAG 的建議正確性、來源充分性與 Hallucination Rate。
+
+## 6. 可重現步驟
 
 ```powershell
 # 匯出固定資料快照後，以 Run-aware split 重新訓練與評估

@@ -96,7 +96,8 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - Modbus 正常情境正式實驗 `MODBUS_NORMAL_100RUN_CLEAN_20261026`：100 個 Run、1,000 筆成功讀取、0 次失敗，所有紀錄的 `FaultType` 為 `None`。
 - 15 種正式受控情境共 1,500 個 Run、3,800 筆紀錄，並已保存 CSV 資料快照、覆蓋率與 SHA-256。詳見 [FormalDatasetSnapshot_20261103.md](FormalDatasetSnapshot_20261103.md)。
 - 三種診斷方法已完成量化評估：Rule-based 全量 Accuracy 18.42%，本機 RAG 的 Top-1／Top-3 Accuracy 均為 42.11%、平均診斷時間 2.09 ms；Run-aware 保留測試上 Logistic Regression 與 Random Forest 均為 100.00% Accuracy／weighted F1，SVM 為 73.08% Accuracy、70.97% weighted F1。完整方法與限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。ML 結果應描述為受控環境的流程驗證與基準，不可延伸為現場泛化結論。
-- MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這批資料目前保留供後續跨協定實驗使用，尚未納入 ML 成績宣稱。
+- ML 混淆矩陣已保留為 PNG 與 CSV：Logistic Regression、Random Forest 的 26 筆保留測試樣本皆正確分類；SVM 有 7 筆誤判，主要把 `IllegalAddress` 與 `TopicMismatch` 判為 `AuthenticationFailed`。此差異可作為比較模型特徵表現的具體證據。
+- MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這些資料已納入本次跨協定 ML、Rule-based 與 RAG 評估。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。
 - OPC UA Invalid Endpoint 正式實驗 `OPCUA_INVALID_ENDPOINT_100RUN_20261028` 已完成 100 個 Run、100 筆失敗紀錄；Server 保持運作但 Collector 指向不存在的 endpoint，所有紀錄皆正確標註為 `InvalidEndpoint`／`ServiceResultException`。
 - OPC UA Timeout 正式實驗 `OPCUA_TIMEOUT_100RUN_20261028` 已完成 100 個 Run、100 筆逾時紀錄；Docker Timeout Simulator 接受 TCP 連線但不回覆 OPC UA 封包，所有紀錄皆正確標註為 `Timeout`／`ServiceResultException`。
@@ -107,13 +108,32 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 
 目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種，並完成 Rule-based、ML 與 RAG 的第一輪量化評估。後續將針對更多 FaultType、設備與網路條件收集資料，擴大協定、設備與網路條件多樣性，並以更大的保留集驗證模型。
 
-完成收集後，將比較：
+本輪比較結果如下：
 
-| 方法 | 評估指標 |
-| --- | --- |
-| Rule-based | Accuracy、診斷時間、可解釋性。 |
-| Machine Learning | Accuracy、Precision、Recall、F1、Confusion Matrix。 |
-| RAG | Top-1 Accuracy、Top-3 Accuracy、診斷時間、Explanation Quality、Hallucination Rate。 |
+| 方法 | 已量測指標 | 本輪結果與書審重點 |
+| --- | --- | --- |
+| Rule-based | Accuracy、規則可解釋性 | 18.42%；顯示既有規則覆蓋率不足，適合作為後續擴充基準。 |
+| Machine Learning | Accuracy、Precision、Recall、F1、Confusion Matrix | Logistic Regression／Random Forest 在小型 Run-aware 保留集為 100.00%；SVM 73.08%，可由矩陣觀察特定 FaultType 的混淆。 |
+| RAG | Top-1、Top-3、診斷時間 | Top-1／Top-3 為 42.11%，平均 2.09 ms；正常狀態與 SessionDisconnected 是可明確改善的知識缺口。 |
+
+## 實驗比較與研究結論
+
+### 方法比較
+
+| 面向 | Rule-based | Machine Learning | 本機 RAG |
+| --- | --- | --- | --- |
+| 主要優點 | 規則與判斷過程直接可查 | 受控資料中能辨識多類錯誤特徵 | 能附上原因、建議與知識來源 |
+| 本輪量化結果 | 全量 Accuracy 18.42% | 最佳模型測試 Accuracy／weighted F1 100.00% | 全量 Top-1／Top-3 42.11%，平均 2.09 ms |
+| 已觀察限制 | 僅命中部分 Modbus 異常 | 測試集僅 26 筆，不能推論產線泛化 | 未覆蓋正常狀態與 SessionDisconnected |
+| 後續改善方向 | 補齊 OPC UA、MQTT、正常狀態規則 | 增加設備、網路條件與保留 Run | 擴充知識文章並人工審查解釋品質 |
+
+### 混淆矩陣重點
+
+保留測試集共有 26 筆資料、12 個 FaultType。Logistic Regression 與 Random Forest 的混淆矩陣均為完全對角線（26 / 26）；SVM 為 19 / 26。SVM 的 7 筆誤判為：`CertificateError → InvalidEndpoint` 1 筆、`InvalidNodeId → CertificateError` 1 筆、`IllegalAddress → AuthenticationFailed` 2 筆、`TopicMismatch → AuthenticationFailed` 3 筆。PNG 與 CSV 附件位於 `ml/outputs/formal-20261103/`，完整數值見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。
+
+### 可用於書審的實驗結論
+
+> 本專案已完成 15 種 IIoT 通訊受控情境、1,500 個 Experiment Run 與 3,800 筆通訊紀錄的正式資料收集，並以 Rule-based、Machine Learning 與 RAG 三種方法進行診斷評估。結果顯示，規則式方法具高度可解釋性但目前覆蓋不足；本機 RAG 能辨識多數異常並提供可追溯的建議，但正常狀態與 Session 中斷仍是知識缺口；機器學習在以 Run 為單位分割的受控保留資料上展現良好分類效果。這些結果支持本平台作為 IIoT 故障診斷研究基礎，並明確指出下一步應驗證不同設備、網路條件與更大測試集下的泛化能力。
 
 ## 可放入自傳或讀書計畫的段落
 
@@ -125,7 +145,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 2. 附上 GitHub 或程式碼連結，並以 README 作為操作與驗證依據。
 3. 製作 3 至 6 張截圖：系統架構、Docker／Seq、資料庫、Dataset、ML、RAG。
 4. 面試時以「一次故障從 Simulator 到 RAG 診斷」展示完整流程。
-5. 以「平台、正式資料與第一輪受控評估已完成」描述進度；同時清楚說明 Simulator 資料與小型保留測試集的限制，避免將受控結果寫成現場泛化結論。
+5. 以「平台、正式資料與第一輪受控評估已完成」描述進度；展示比較表與混淆矩陣，同時清楚說明 Simulator 資料與小型保留測試集的限制，避免將受控結果寫成現場泛化結論。
 
 ## 後續需補上的個人資訊
 
