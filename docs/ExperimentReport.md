@@ -111,13 +111,11 @@
 - **Certificate Error**：透過 Device protocol settings 啟用 OPC UA 安全連線，但不將 Client 憑證加入 Prosys 信任清單。100 筆資料皆回傳 `BadSecurityChecksFailed`，並正規化為 `CertificateError`／`ServiceResultException`；收集完成後已恢復不使用安全連線的設定。
 - **Session Disconnected**：Prosys 維持運作，Collector 經由 Session Disconnect Proxy 建立 Session；Proxy 隨後關閉 transport。Device settings 設定讀取前延遲 2 秒、關閉該情境的自動重連，確保保存的是中斷事件而非重連後的成功讀取。100 筆資料皆為 `SessionDisconnected`／`ServiceResultException`；完成後已停止 Proxy 並恢復預設重連設定。
 
-## 5. 初步 ML 與診斷工作
+## 5. Rule-based、ML 與 RAG 診斷評估
 
-Modbus 的四種情境已另行建立第一版受控環境 ML baseline：400 個 Run、1,600 筆紀錄，以 Experiment Run 為單位切分訓練、驗證與測試資料。Logistic Regression、Random Forest 與 SVM 在此受控資料上的 weighted F1 均為 1.000。詳細方法、輸出與限制見 [ModbusMlBaseline.md](ModbusMlBaseline.md)。
+2026-11-03 已以本報告 15 種正式情境的固定資料快照完成三種方法的量化評估。Rule-based 全量 Accuracy 為 18.42%（700 / 3,800）；本機 RAG 的 Top-1／Top-3 Accuracy 均為 42.11%（1,600 / 3,800），平均診斷時間為 2.09 ms。以 Experiment Run 為界的保留測試資料上，Logistic Regression 與 Random Forest 的 Accuracy／weighted F1 均為 100.00%，SVM 的 Accuracy 為 73.08%、weighted F1 為 70.97%。
 
-此數值只證明資料管線、標註與模型訓練流程能運作；因 Simulator 條件具高度可分性、測試 Run 數有限，**不可描述為現場工業環境的泛化效能**。MQTT 的 500 個正式 Run 目前尚未加入跨協定 ML 成績。
-
-Rule-based 與 RAG 診斷功能已在專案中實作；後續可使用這些正式 Experiment ID 對照 Ground Truth，評估 Top-1／Top-3 Accuracy、診斷時間與解釋品質。
+完整逐情境表格、資料快照 hash、ML 訓練輸出與方法限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。ML 的滿分結果只代表高度受控 Simulator 資料上的流程基準；由於測試集僅 26 筆紀錄且錯誤特徵具高度可分性，**不可描述為現場工業環境的泛化效能**。
 
 ## 6. 已知限制
 

@@ -2,7 +2,7 @@
 
 用於建立與驗證工業物聯網（IIoT）通訊異常的本機研究平台。專案以虛擬設備取代實體 PLC，蒐集 Modbus TCP、OPC UA 與 MQTT 的正常及異常通訊紀錄，提供實驗執行、CSV 匯出與規則式故障診斷，作為後續 Dataset、Machine Learning 與 LLM/RAG 研究的資料基礎。
 
-原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 10 的資料集、ML pipeline 與本機 RAG 功能**；Phase 8 的每種故障至少 100 runs 資料收集與正式模型／RAG 評估仍待完成。
+原始實作規劃位於 [docs/ImplementationPlan_IIoT_FaultDiagnosis.md](docs/ImplementationPlan_IIoT_FaultDiagnosis.md)。目前已完成 **Phase 0 至 Phase 10**，並完成 15 種受控情境、1,500 個 Run、3,800 筆通訊紀錄的正式資料快照與 Rule-based／ML／RAG 診斷評估。量化結果與限制見 [docs/FormalDiagnosisEvaluation_20261103.md](docs/FormalDiagnosisEvaluation_20261103.md)。
 
 若要將本專案用於碩士在職專班書審，請參考 [docs/GraduateApplicationPortfolio.md](docs/GraduateApplicationPortfolio.md) 的摘要、研究問題、技術特色與展示建議。
 
@@ -20,9 +20,9 @@
 | Phase 5 | 已完成 | Rule-based 診斷與評估 |
 | Phase 6 | 已完成 | OPC UA Adapter 與 Prosys 驗證 |
 | Phase 7 | 已完成 | MQTT Adapter、Mosquitto、QoS 訂閱與重連 |
-| Phase 8 | 功能已完成，資料收集待完成 | 正式 Dataset 匯出、Ground Truth／預測分離、覆蓋率統計 |
-| Phase 9 | 功能已完成，正式訓練待完成 | Docker Python/Jupyter、前處理、Run-aware split、模型比較與評估 |
-| Phase 10 | 本機 RAG 已完成，外部 LLM 選用 | 本機 RAG、知識來源、歷史案例、Top-1／Top-3 評估 |
+| Phase 8 | 已完成 | 正式 Dataset 匯出、Ground Truth／預測分離、覆蓋率統計 |
+| Phase 9 | 已完成 | Docker Python/Jupyter、前處理、Run-aware split、模型比較與評估 |
+| Phase 10 | 已完成 | 本機 RAG、知識來源、歷史案例、Top-1／Top-3 評估 |
 
 ## 已完成功能
 

@@ -60,6 +60,7 @@ public sealed class DiagnosisRepository(FaultDiagnosisDbContext db) : IDiagnosis
         var rows = await (from experiment in db.Experiments where experiment.Id == id
                           join record in db.CommunicationRecords on experiment.Id equals record.ExperimentId
                           join diagnosis in db.DiagnosisResults on record.Id equals diagnosis.CommunicationRecordId
+                          where diagnosis.DiagnosisMethod == DiagnosisMethod.RuleBased
                           select new { experiment.ActualFaultType, diagnosis.PredictedFaultType }).ToListAsync(ct);
         if (rows.Count == 0 && !await db.Experiments.AnyAsync(experiment => experiment.Id == id, ct)) return null;
         var correct = rows.Count(row => row.ActualFaultType == row.PredictedFaultType);

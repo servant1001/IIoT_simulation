@@ -94,7 +94,8 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - RAG API 回應中的候選 FaultType、原因、建議與來源。
 - `dotnet build` 與 Unit Tests 的通過結果。
 - Modbus 正常情境正式實驗 `MODBUS_NORMAL_100RUN_CLEAN_20261026`：100 個 Run、1,000 筆成功讀取、0 次失敗，所有紀錄的 `FaultType` 為 `None`。
-- Modbus 四類正式資料（正常、ConnectionRefused、Timeout、IllegalAddress）共 400 個 Run、1,600 筆紀錄，以及依 Experiment Run 切分的初步 ML baseline。三種模型在此受控環境測試集皆為 1.000 weighted F1；此結果應描述為流程驗證與初步 baseline，而非現場泛化結論。
+- 15 種正式受控情境共 1,500 個 Run、3,800 筆紀錄，並已保存 CSV 資料快照、覆蓋率與 SHA-256。詳見 [FormalDatasetSnapshot_20261103.md](FormalDatasetSnapshot_20261103.md)。
+- 三種診斷方法已完成量化評估：Rule-based 全量 Accuracy 18.42%，本機 RAG 的 Top-1／Top-3 Accuracy 均為 42.11%、平均診斷時間 2.09 ms；Run-aware 保留測試上 Logistic Regression 與 Random Forest 均為 100.00% Accuracy／weighted F1，SVM 為 73.08% Accuracy、70.97% weighted F1。完整方法與限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。ML 結果應描述為受控環境的流程驗證與基準，不可延伸為現場泛化結論。
 - MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這批資料目前保留供後續跨協定實驗使用，尚未納入 ML 成績宣稱。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。
 - OPC UA Invalid Endpoint 正式實驗 `OPCUA_INVALID_ENDPOINT_100RUN_20261028` 已完成 100 個 Run、100 筆失敗紀錄；Server 保持運作但 Collector 指向不存在的 endpoint，所有紀錄皆正確標註為 `InvalidEndpoint`／`ServiceResultException`。
@@ -104,7 +105,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 
 ## 正在進行的實驗計畫
 
-目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種。Modbus 資料已完成受控環境的初步 ML baseline；後續將針對更多 Modbus FaultType 與更多網路條件收集正式資料，擴大資料的協定、設備與網路條件多樣性。
+目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種，並完成 Rule-based、ML 與 RAG 的第一輪量化評估。後續將針對更多 FaultType、設備與網路條件收集資料，擴大協定、設備與網路條件多樣性，並以更大的保留集驗證模型。
 
 完成收集後，將比較：
 
@@ -124,7 +125,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 2. 附上 GitHub 或程式碼連結，並以 README 作為操作與驗證依據。
 3. 製作 3 至 6 張截圖：系統架構、Docker／Seq、資料庫、Dataset、ML、RAG。
 4. 面試時以「一次故障從 Simulator 到 RAG 診斷」展示完整流程。
-5. 以「平台已完成、正式資料收集中」描述進度，避免把 exploratory 或 smoke-test 結果寫成正式研究結論。
+5. 以「平台、正式資料與第一輪受控評估已完成」描述進度；同時清楚說明 Simulator 資料與小型保留測試集的限制，避免將受控結果寫成現場泛化結論。
 
 ## 後續需補上的個人資訊
 

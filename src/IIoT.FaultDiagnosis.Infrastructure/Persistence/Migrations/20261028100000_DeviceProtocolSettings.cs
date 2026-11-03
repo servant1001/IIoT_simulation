@@ -1,9 +1,13 @@
+using IIoT.FaultDiagnosis.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace IIoT.FaultDiagnosis.Infrastructure.Persistence.Migrations;
 
+[DbContext(typeof(FaultDiagnosisDbContext))]
+[Migration("20261028100000_DeviceProtocolSettings")]
 public partial class DeviceProtocolSettings : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
