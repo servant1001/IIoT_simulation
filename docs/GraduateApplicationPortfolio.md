@@ -100,6 +100,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - 額外完成兩輪未納入原始訓練快照的 `NetworkDelay` 泛化驗證：G-01 為 100 Run／398 筆、G-02 為不同延遲分布的 100 Run／388 筆。固定的 Rule-based 門檻與 RAG 知識在兩輪皆正確辨識全部紀錄；三個固定 ML 模型皆將資料誤判為 `None`（0%）。此負向結果具體揭露封閉類別模型對未見故障的限制，完整資料、SHA-256 與效度限制見 [GeneralizationExperiments.md](GeneralizationExperiments.md)。
 - 以 G-01 的標註資料重訓後，仍未參與訓練的 G-02 成為獨立 ML 測試：Random Forest 達 388 / 388，Logistic Regression 為 155 / 388，SVM 為 232 / 388。此比較不只呈現最佳結果，也呈現不同模型對延遲特徵的差異與限制；G-02 不再用於調參，後續需以新的資料分布再次驗證。
 - 接近門檻的 G-04 以 70–400 ms 新延遲序列測試已凍結的系統：Rule-based／RAG 為 300 / 500（100 ms 門檻下的預期漏判）、Random Forest 為 400 / 500、SVM 為 100 / 500、Logistic Regression 為 0 / 500。此結果避免以 G-02 的單次 100% 宣稱全面泛化，並具體呈現不同模型在邊界延遲的敏感度差異。
+- 新增 G-05 Unknown／人工確認機制：面對未映射的 Modbus Exception Code 03，closed-set ML 全數誤判為既有故障；保留 Adapter 的 `Unknown` 訊號並加入 open-set 護欄後，200 / 200 正確標示為需要人工確認。此結果說明安全診斷不應強迫模型在未知條件下輸出既有故障名稱。
 - ML 混淆矩陣已保留為 PNG 與 CSV：Logistic Regression、Random Forest 的 26 筆保留測試樣本皆正確分類；SVM 有 7 筆誤判，主要把 `IllegalAddress` 與 `TopicMismatch` 判為 `AuthenticationFailed`。此差異可作為比較模型特徵表現的具體證據。
 - MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這些資料已納入本次跨協定 ML、Rule-based 與 RAG 評估。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。

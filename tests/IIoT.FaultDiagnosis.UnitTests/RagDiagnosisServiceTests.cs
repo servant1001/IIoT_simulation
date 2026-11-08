@@ -84,6 +84,18 @@ public sealed class RagDiagnosisServiceTests
         Assert.Equal("modbus-network-delay", result.First().Article.Id);
     }
 
+    [Fact]
+    public void Search_ReturnsManualReviewKnowledgeForUnknownModbusFault()
+    {
+        var context = new RagRecordContext(Guid.NewGuid(), ProtocolType.ModbusTcp, "127.0.0.1", 1506, CommunicationStatus.Failed,
+            FaultType.Unknown, "ModbusExceptionCode03", "Modbus exception code 3", 1, 0);
+
+        var result = new RagKnowledgeBase().Search(context, 3);
+
+        Assert.Equal(FaultType.Unknown, result.First().Article.FaultType);
+        Assert.Equal("modbus-unknown-protocol-fault", result.First().Article.Id);
+    }
+
     private sealed class MemoryRepository(RagRecordContext? context, IReadOnlyList<RagHistoricalCase> historicalCases) : IRagDiagnosisRepository, IDiagnosisRepository
     {
         public List<DiagnosisResult> SavedResults { get; } = [];

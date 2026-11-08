@@ -47,7 +47,8 @@ public static class DependencyInjection
             new FaultTypeRule(FaultType.BrokerUnavailable, "The MQTT broker is unavailable at the configured endpoint.", "Confirm broker availability, host, port and Docker port mapping."),
             new FaultTypeRule(FaultType.AuthenticationFailed, "The MQTT broker rejected the configured credentials.", "Verify username, password and broker ACL permissions."),
             new FaultTypeRule(FaultType.TopicMismatch, "The MQTT subscription topic was rejected or did not match the publisher topic.", "Compare topic names exactly and verify topic ACL permissions."),
-            new FaultTypeRule(FaultType.PayloadInvalid, "The MQTT payload does not satisfy the configured JSON or schema expectation.", "Capture the raw payload and align publisher encoding and required JSON fields.")
+            new FaultTypeRule(FaultType.PayloadInvalid, "The MQTT payload does not satisfy the configured JSON or schema expectation.", "Capture the raw payload and align publisher encoding and required JSON fields."),
+            new FaultTypeRule(FaultType.Unknown, "The protocol adapter received an error that does not match a known normalized fault type.", "Do not treat this as normal. Preserve the raw trace and error code, then request protocol-owner review before changing retry or timeout settings.")
         };
 
         foreach (var rule in rules)

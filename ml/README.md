@@ -84,3 +84,17 @@ docker compose --profile ml run --rm -e PYTHONDONTWRITEBYTECODE=1 ml-lab python 
 最後只對 G-02 執行 `evaluate_unseen.py`。此時 `NetworkDelay` 已是模型類別，G-02 評估的是新增標註資料後的獨立泛化，而不是未見類別能力。
 
 G-04 是後續的近門檻獨立測試資料，僅能對已凍結的 G-03 模型做 inference；不可回填至上述訓練快照或用來調整模型與延遲門檻。其實際結果與限制保存在 `docs/GeneralizationExperiments.md`。
+
+## Open-set Unknown／人工確認評估
+
+`evaluate_open_set.py` 不會重訓模型；它只用既有訓練快照重建 Run-aware validation split，從已知資料校準信心門檻。若 Adapter 已輸出 `Unknown`，或模型信心低於該門檻，輸出會改為 `Unknown` 並標記 `review_required`：
+
+```powershell
+docker compose --profile ml run --rm -e PYTHONDONTWRITEBYTECODE=1 ml-lab python ml/evaluate_open_set.py `
+  --calibration-input artifacts/training/networkdelay-v1-20261108/iiot-fault-dataset.csv `
+  --input artifacts/generalization/modbus-unknown-exception-g05-20261108/dataset.csv `
+  --model ml/outputs/networkdelay-v1-20261108/random_forest.joblib `
+  --output ml/outputs/generalization/modbus-unknown-exception-g05-open/random_forest
+```
+
+此機制應被描述為安全護欄，不應聲稱僅靠信心分數就能辨識所有未知故障；應另行評估低信心與 Adapter `Unknown` 兩種觸發來源。

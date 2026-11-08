@@ -161,6 +161,32 @@ G-04 推翻「Random Forest 在所有延遲條件下均為 100%」的過度推�
 
 此結果使研究結論更具可信度：不同方法在延遲邊界呈現不同敏感度；目前最合理的後續工作不是依 G-04 再微調門檻或模型，而是以 G-04 保持為已報告的獨立結果，建立新的故障型態資料，並研究 Unknown／拒答機制與成本敏感的告警門檻。
 
+## G-05：Unknown／人工確認護欄
+
+G-05 使用新的 `modbus-unknown-exception-simulator` 回覆 Modbus Exception Code `03`。目前 Adapter 不將此碼映射到已知 FaultType，因此其 `observed_fault_type` 為 `Unknown`；此情境沒有加入 G-03 的模型訓練快照。
+
+| 項目 | 設計／結果 |
+| --- | --- |
+| 小型驗證 | `MODBUS_UNKNOWN_EXCEPTION_G05_001_VALIDATION_20261108`，Experiment ID `9fa7fcc2-8a66-4ab8-b1e7-816741b67050`；1 / 1 Completed、2 records，皆為 `Unknown`／`ModbusExceptionCode03`。 |
+| 正式 Experiment | `MODBUS_UNKNOWN_EXCEPTION_G05_100RUN_20261108`，Experiment ID `01348cc8-49de-484b-9bba-4f89423134d7`。 |
+| 正式收集 | 100 / 100 Completed、200 records；Ground Truth 與 Adapter 觀測皆為 `Unknown`，錯誤碼皆為 `ModbusExceptionCode03`。 |
+| Dataset CSV | `artifacts/generalization/modbus-unknown-exception-g05-20261108/dataset.csv`（SHA-256：`3E679CFE80AB7BD61568D572F6560CF58AB1AEDA2F1EF1AB9807DB02CEEF0893`）。 |
+| Rule-based／RAG | 均為 200 / 200；RAG 使用 `modbus-unknown-protocol-fault` 來源，明確建議保存 raw trace 並人工確認。 |
+
+### Closed-set 與 open-set ML 比較
+
+| 模型 | 原 closed-set 輸出 | 加入 open-set 護欄後 |
+| --- | --- | --- |
+| Logistic Regression | 200 / 200 誤判為 `IllegalAddress`。 | 200 / 200 輸出 `Unknown`，要求人工確認。 |
+| Random Forest | 200 / 200 誤判為 `IllegalAddress`。 | 200 / 200 輸出 `Unknown`，要求人工確認。 |
+| SVM | 166 筆 `IllegalAddress`、34 筆 `TopicMismatch`。 | 200 / 200 輸出 `Unknown`，要求人工確認。 |
+
+open-set 評估會以 G-03 合併快照的 Run-aware validation split 校準每個模型的信心門檻（Logistic Regression 0.5576、Random Forest 1.0000、SVM 0.9996），但 G-05 的 200 筆資料皆由 `adapter_unknown` 護欄觸發，而非低信心門檻。Unknown 偵測 precision／recall 均為 100%。
+
+### G-05 結論與限制
+
+G-05 證明安全護欄可避免 closed-set ML 把 Adapter 已明確標示的未知協定例外錯誤歸類為既有故障，並把處置轉為人工確認。這不是「模型自行發現所有未知故障」的證明：本輪 100% 主要來自 Adapter 提供的 `Unknown` 訊號。後續應加入不被 Adapter 標示為 Unknown、但特徵分布偏離訓練資料的情境，才能單獨衡量信心門檻的 OOD 偵測能力。
+
 ## 評估原則
 
 1. 固定訓練快照不加入本實驗資料；ML 不可在尚未評估前以 `NetworkDelay` 資料重新訓練。
