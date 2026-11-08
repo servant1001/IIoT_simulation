@@ -105,6 +105,8 @@ services:
       context: ./modbus-simulator
     command: ["python", "modbus_delay_proxy.py"]
     profiles: ["fault-simulators"]
+    environment:
+      MODBUS_DELAY_SEQUENCE_MS: "${MODBUS_DELAY_SEQUENCE_MS:-150,300,450,600,750}"
     depends_on:
       - modbus-simulator
     ports:

@@ -8,7 +8,7 @@
 
 正式資料收集的 Simulator 情境、Experiment 操作步驟與自動化腳本請見 [docs/ExperimentCollectionGuide.md](docs/ExperimentCollectionGuide.md)。
 
-原始 15 種受控情境以外的未見條件驗證，獨立記錄於 [docs/GeneralizationExperiments.md](docs/GeneralizationExperiments.md)。目前的 G-01 顯示：未納入訓練的 `NetworkDelay` 會使既有 ML 模型全部預測為 `None`；Rule-based 與 RAG 的改善前後結果與效度限制均在該文件中保存。
+原始 15 種受控情境以外的未見條件驗證，獨立記錄於 [docs/GeneralizationExperiments.md](docs/GeneralizationExperiments.md)。G-01 與 G-02 均顯示：未納入訓練的 `NetworkDelay` 會使既有 ML 模型全部預測為 `None`；固定的 Rule-based 門檻與 RAG 知識則在兩個不同延遲分布中正確辨識資料。適用限制與完整實驗證據均在該文件保存。
 
 ## 專案進度
 

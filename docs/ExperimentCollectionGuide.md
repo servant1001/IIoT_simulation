@@ -113,6 +113,14 @@ docker compose --profile fault-simulators up -d --build `
 
 `modbus-delay-simulator` 用於未見網路條件驗證：通訊能成功、Adapter 的 `observed_fault_type` 仍為 `None`，但 Experiment 的 Ground Truth 為 `NetworkDelay`。因此它不應混入 Phase 8 的 15 種正式訓練快照；應獨立保留為泛化評估資料，檢驗診斷方法是否能處理尚未納入規則、知識庫或訓練資料的延遲型態。
 
+若要進行獨立延遲分布驗證，可在重建 Proxy 時指定另一組值；實驗開始前必須凍結診斷規則、RAG 知識與 ML 模型，並把資料輸出至新的 `artifacts/generalization/` 子目錄：
+
+```powershell
+$env:MODBUS_DELAY_SEQUENCE_MS = "118,267,411,639,888"
+docker compose --profile fault-simulators up -d --build --force-recreate modbus-delay-simulator
+Remove-Item Env:MODBUS_DELAY_SEQUENCE_MS
+```
+
 啟動 OPC UA Timeout Simulator：
 
 ```powershell

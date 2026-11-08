@@ -72,6 +72,37 @@ G-01 證明受控資料上的高正確率不能直接等同於未見條件的泛
 
 不過這不是未調整系統的純 held-out 成績：門檻與知識是在小型 baseline 已揭露該問題後加入。因此書審或論文應同時呈現「改善前 0 / 4」與「改善後 398 / 398」，並說明後者驗證的是改善措施，而非宣稱 ML 已學會未見類別。下一步應收集不同延遲分布、背景負載與其他協定的獨立資料，並建立 Unknown／異常偵測策略。
 
+## G-02：Modbus TCP 獨立延遲分布驗證
+
+G-02 用於驗證 G-01 改善後的 Rule-based 門檻與 RAG 知識，是否能在**不同資料分布**下維持結果。執行前已凍結診斷規則、RAG 知識庫與三個 ML 模型；只有模擬器的延遲序列改為 `118、267、411、639、888 ms`。因此它是改善措施的獨立重複驗證，不是新的模型訓練。
+
+| 項目 | 設計／結果 |
+| --- | --- |
+| 協定與 Ground Truth | Modbus TCP，`NetworkDelay (19)`。 |
+| Simulator | 同一個 TCP Proxy，但透過 `MODBUS_DELAY_SEQUENCE_MS` 設定為新的序列；對外仍為 `127.0.0.1:1505`。 |
+| 小型驗證 | `MODBUS_NETWORK_DELAY_G02_001_VALIDATION_20261108`，Experiment ID `6d1608d5-56a8-49cc-9a42-2aac6ed543a5`；1 / 1 Completed、4 records，回應時間為 139.78、272.68、416.14、643.15 ms。 |
+| 正式 Experiment | `MODBUS_NETWORK_DELAY_G02_100RUN_20261108`，Experiment ID `033d2eea-e766-4d83-b201-a3a28a7cfdaf`。 |
+| 正式收集 | 100 / 100 Completed、388 records；全部為 `Success` 且 `observed_fault_type = None`。 |
+| 回應時間 | 最小 121.37 ms、平均 468.76 ms、中位數 415.59 ms、最大 895.02 ms。 |
+| Dataset CSV | `artifacts/generalization/modbus-network-delay-g02-20261108/dataset.csv`（388 rows，SHA-256：`D501F88B72A72269E3066BFADAC4D493CA5707A143DCB2BE837ABBA91725EC9C`）。 |
+| Coverage | 100 runs / 388 records / 388 diagnosed，`remainingRunCount = 0`。 |
+
+### G-02 評估結果
+
+| 方法 | 結果 | 固定條件下的解讀 |
+| --- | --- | --- |
+| Rule-based | 388 / 388（100%） | 所有成功回覆均超過 G-01 建立的 100 ms 實驗室門檻。 |
+| RAG | Top-1、Top-3 均 388 / 388（100%） | 固定的 `modbus-network-delay` 知識來源被正確檢索；平均診斷時間 3.33 ms。 |
+| Logistic Regression | 0 / 388（0%），全部預測 `None` | 固定模型的類別空間不含 `NetworkDelay`。 |
+| Random Forest | 0 / 388（0%），全部預測 `None` | 固定模型的類別空間不含 `NetworkDelay`。 |
+| SVM | 0 / 388（0%），全部預測 `None` | 固定模型的類別空間不含 `NetworkDelay`。 |
+
+ML 的可重現輸出、混淆矩陣與 metrics 存於 `ml/outputs/generalization/modbus-network-delay-g02/`；G-02 CSV 與 coverage 快照不併入 Phase 8 的固定訓練資料。
+
+### G-02 結論與限制
+
+G-02 支持「G-01 建立的 100 ms 規則與 RAG 知識，可在新的、較高且不同分布的延遲序列中穩定工作」；但它仍是同一協定、同一 TCP Proxy 與所有值皆高於門檻的受控驗證。它不能證明跨協定、接近門檻（例如 80–120 ms）或真實工廠網路下的泛化能力。兩次實驗也一致指出：封閉集合 ML 對未出現在訓練類別的故障會錯誤地自信預測 `None`，應在後續導入 Unknown／拒答機制與跨協定資料。
+
 ## 評估原則
 
 1. 固定訓練快照不加入本實驗資料；ML 不可在尚未評估前以 `NetworkDelay` 資料重新訓練。

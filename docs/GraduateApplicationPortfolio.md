@@ -47,6 +47,7 @@ flowchart LR
 | 類別 | 使用工具 | 部署方式 | 實驗用途 |
 | --- | --- | --- | --- |
 | Modbus TCP | 自建 Docker Modbus Simulator（Python + `pymodbus`） | 專案內 `docker-compose.yml` 建置；公開 `127.0.0.1:1502` | 模擬 PLC 的 Slave ID `1` 與 Holding Registers `0–5`，供 Collector 以 Modbus TCP 實際讀取。 |
+| Modbus 網路延遲 | 自建 Docker TCP Delay Proxy | 專案內 `modbus-delay-simulator`；公開 `127.0.0.1:1505` | 轉送正常 Modbus 回覆並注入可設定延遲序列，產生「成功但網路品質劣化」的獨立泛化驗證資料。 |
 | OPC UA | Prosys OPC UA Simulation Server 與自建 Session Disconnect Proxy | Prosys 為 Windows 外部模擬器；Proxy 為 Docker 容器 | 模擬 OPC UA Server、Endpoint、NodeId 與 Session 建立後的 transport 中斷。 |
 | MQTT | Eclipse Mosquitto 與自建 MQTT 5 Topic Rejection Simulator | Docker Compose 容器；正常 Broker 為 `127.0.0.1:1883`、帳密 Broker `127.0.0.1:1884`、訂閱拒絕端點 `127.0.0.1:1885` | 模擬 MQTT Broker、Topic、JSON 訊息發布／訂閱、帳密拒絕與 SUBACK 訂閱拒絕。 |
 | 資料庫 | PostgreSQL | Docker Compose 容器 | 儲存 Device、Experiment Run、通訊紀錄、系統指標與診斷資料。 |
@@ -96,6 +97,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - Modbus 正常情境正式實驗 `MODBUS_NORMAL_100RUN_CLEAN_20261026`：100 個 Run、1,000 筆成功讀取、0 次失敗，所有紀錄的 `FaultType` 為 `None`。
 - 15 種正式受控情境共 1,500 個 Run、3,800 筆紀錄，並已保存 CSV 資料快照、覆蓋率與 SHA-256。詳見 [FormalDatasetSnapshot_20261103.md](FormalDatasetSnapshot_20261103.md)。
 - 三種診斷方法已完成量化評估：Rule-based 全量 Accuracy 為 100.00%，本機 RAG 的 Top-1／Top-3 Accuracy 均為 100.00%、平均診斷時間 7.09 ms；Run-aware 保留測試上 Logistic Regression 與 Random Forest 均為 100.00% Accuracy／weighted F1，SVM 為 73.08% Accuracy、70.97% weighted F1。完整方法與限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。Rule-based 與 RAG 的滿分代表其完整覆蓋已正規化的受控快照；ML 結果是受控環境的流程驗證與基準，均不可延伸為現場泛化結論。
+- 額外完成兩輪未納入原始訓練快照的 `NetworkDelay` 泛化驗證：G-01 為 100 Run／398 筆、G-02 為不同延遲分布的 100 Run／388 筆。固定的 Rule-based 門檻與 RAG 知識在兩輪皆正確辨識全部紀錄；三個固定 ML 模型皆將資料誤判為 `None`（0%）。此負向結果具體揭露封閉類別模型對未見故障的限制，完整資料、SHA-256 與效度限制見 [GeneralizationExperiments.md](GeneralizationExperiments.md)。
 - ML 混淆矩陣已保留為 PNG 與 CSV：Logistic Regression、Random Forest 的 26 筆保留測試樣本皆正確分類；SVM 有 7 筆誤判，主要把 `IllegalAddress` 與 `TopicMismatch` 判為 `AuthenticationFailed`。此差異可作為比較模型特徵表現的具體證據。
 - MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這些資料已納入本次跨協定 ML、Rule-based 與 RAG 評估。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。
@@ -106,7 +108,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 
 ## 正在進行的實驗計畫
 
-目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種，並完成 Rule-based、ML 與 RAG 的第一輪量化評估。後續將針對更多 FaultType、設備與網路條件收集資料，擴大協定、設備與網路條件多樣性，並以更大的保留集驗證模型。
+目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種與 OPC UA 六種，並完成 Rule-based、ML 與 RAG 的第一輪量化評估。另完成兩輪獨立的 Modbus `NetworkDelay` 實驗，確認既有 ML 對未見類別的失效型態；後續將導入 Unknown／拒答機制，並針對更多 FaultType、設備與網路條件收集跨協定資料。
 
 本輪比較結果如下：
 
@@ -133,7 +135,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 
 ### 可用於書審的實驗結論
 
-> 本專案已完成 15 種 IIoT 通訊受控情境、1,500 個 Experiment Run 與 3,800 筆通訊紀錄的正式資料收集，並以 Rule-based、Machine Learning 與 RAG 三種方法進行診斷評估。Rule-based 與本機 RAG 在此固定受控快照均完整覆蓋所有情境，並分別提供可追溯規則與知識來源；機器學習在以 Run 為單位分割的受控保留資料上展現良好分類效果。這些結果支持本平台作為 IIoT 故障診斷研究基礎，同時明確指出下一步應驗證不同設備、網路條件、未知錯誤型態與更大測試集下的泛化能力。
+> 本專案已完成 15 種 IIoT 通訊受控情境、1,500 個 Experiment Run 與 3,800 筆通訊紀錄的正式資料收集，並以 Rule-based、Machine Learning 與 RAG 三種方法進行診斷評估。Rule-based 與本機 RAG 在此固定受控快照均完整覆蓋所有情境，並分別提供可追溯規則與知識來源；機器學習在以 Run 為單位分割的受控保留資料上展現良好分類效果。進一步的兩輪獨立 `NetworkDelay` 實驗則發現，未含該類別的既有 ML 模型會全部誤判為正常，而固定的延遲規則與 RAG 知識可穩定辨識。這些正向與負向結果共同支持本平台作為 IIoT 故障診斷研究基礎，並明確指出下一步應研究 Unknown 偵測、不同設備、網路條件與跨協定泛化能力。
 
 ## 可放入自傳或讀書計畫的段落
 

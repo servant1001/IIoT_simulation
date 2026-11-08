@@ -4,12 +4,22 @@ import asyncio
 import contextlib
 import itertools
 import logging
+import os
 
 
 LISTEN_PORT = 502
 UPSTREAM_HOST = "modbus-simulator"
 UPSTREAM_PORT = 502
-DELAY_SEQUENCE_MS = (150, 300, 450, 600, 750)
+def parse_delay_sequence(value: str) -> tuple[int, ...]:
+    values = tuple(int(item.strip()) for item in value.split(",") if item.strip())
+    if not values or any(delay < 0 for delay in values):
+        raise ValueError("MODBUS_DELAY_SEQUENCE_MS must contain one or more non-negative integers.")
+    return values
+
+
+DELAY_SEQUENCE_MS = parse_delay_sequence(
+    os.environ.get("MODBUS_DELAY_SEQUENCE_MS", "150,300,450,600,750")
+)
 delays = itertools.cycle(DELAY_SEQUENCE_MS)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
