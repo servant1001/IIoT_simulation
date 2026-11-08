@@ -113,9 +113,9 @@
 
 ## 5. Rule-based、ML 與 RAG 診斷評估
 
-2026-11-03 已以本報告 15 種正式情境的固定資料快照完成三種方法的量化評估。Rule-based 全量 Accuracy 為 18.42%（700 / 3,800）；本機 RAG 的 Top-1／Top-3 Accuracy 均為 42.11%（1,600 / 3,800），平均診斷時間為 2.09 ms。以 Experiment Run 為界的保留測試資料上，Logistic Regression 與 Random Forest 的 Accuracy／weighted F1 均為 100.00%，SVM 的 Accuracy 為 73.08%、weighted F1 為 70.97%。
+2026-11-08 已以本報告 15 種正式情境的固定資料快照完成新版三種方法量化評估。補入正常狀態與 Session 中斷覆蓋後，Rule-based 全量 Accuracy 為 100.00%（3,800 / 3,800）；本機 RAG 的 Top-1／Top-3 Accuracy 均為 100.00%（3,800 / 3,800），平均診斷時間為 7.09 ms。以 Experiment Run 為界的保留測試資料上，Logistic Regression 與 Random Forest 的 Accuracy／weighted F1 均為 100.00%，SVM 的 Accuracy 為 73.08%、weighted F1 為 70.97%。
 
-完整逐情境表格、資料快照 hash、ML 訓練輸出與方法限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。ML 的滿分結果只代表高度受控 Simulator 資料上的流程基準；由於測試集僅 26 筆紀錄且錯誤特徵具高度可分性，**不可描述為現場工業環境的泛化效能**。
+完整逐情境表格、資料快照 hash、ML 訓練輸出與方法限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。Rule-based 與 RAG 的滿分代表它們完整覆蓋這份已正規化的受控資料快照；ML 的滿分則代表高度受控 Simulator 資料上的流程基準。由於測試集僅 26 筆紀錄且錯誤特徵具高度可分性，**不可描述為現場工業環境的泛化效能**。
 
 ## 6. 已知限制
 

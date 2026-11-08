@@ -56,6 +56,22 @@ public sealed class RagDiagnosisServiceTests
         Assert.Equal(FaultType.AuthenticationFailed, result.First().Article.FaultType);
     }
 
+    [Theory]
+    [InlineData(ProtocolType.ModbusTcp, FaultType.None, "modbus-normal")]
+    [InlineData(ProtocolType.OpcUa, FaultType.None, "opcua-normal")]
+    [InlineData(ProtocolType.Mqtt, FaultType.None, "mqtt-normal")]
+    [InlineData(ProtocolType.OpcUa, FaultType.SessionDisconnected, "opcua-session-disconnected")]
+    public void Search_ReturnsKnowledgeForNormalAndSessionDisconnected(ProtocolType protocolType, FaultType observedFaultType, string expectedSourceId)
+    {
+        var context = new RagRecordContext(Guid.NewGuid(), protocolType, "127.0.0.1", 1, CommunicationStatus.Success,
+            observedFaultType, null, null, 1, 0);
+
+        var result = new RagKnowledgeBase().Search(context, 3);
+
+        Assert.Equal(observedFaultType, result.First().Article.FaultType);
+        Assert.Equal(expectedSourceId, result.First().Article.Id);
+    }
+
     private sealed class MemoryRepository(RagRecordContext? context, IReadOnlyList<RagHistoricalCase> historicalCases) : IRagDiagnosisRepository, IDiagnosisRepository
     {
         public List<DiagnosisResult> SavedResults { get; } = [];

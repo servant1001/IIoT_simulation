@@ -40,19 +40,22 @@ public sealed class DiagnosisRepository(FaultDiagnosisDbContext db) : IDiagnosis
                           join diagnosis in db.DiagnosisResults.AsNoTracking() on record.Id equals diagnosis.CommunicationRecordId
                           join trace in db.RagDiagnosisTraces.AsNoTracking() on diagnosis.Id equals trace.DiagnosisResultId
                           where diagnosis.DiagnosisMethod == DiagnosisMethod.Rag
-                          select new { experiment.ActualFaultType, diagnosis.PredictedFaultType, diagnosis.DiagnosisDurationMs, trace.CandidateFaultTypes })
+                          select new { CommunicationRecordId = record.Id, experiment.ActualFaultType, DiagnosisResultId = diagnosis.Id, diagnosis.CreatedAt, diagnosis.PredictedFaultType, diagnosis.DiagnosisDurationMs, trace.CandidateFaultTypes })
             .ToListAsync(ct);
 
         if (rows.Count == 0 && !await db.Experiments.AnyAsync(experiment => experiment.Id == experimentId, ct)) return null;
-        var top1Correct = rows.Count(row => row.ActualFaultType == row.PredictedFaultType);
-        var top3Correct = rows.Count(row => DeserializeCandidates(row.CandidateFaultTypes).Contains(row.ActualFaultType));
+        var latestRows = rows.GroupBy(row => row.CommunicationRecordId)
+            .Select(group => group.OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.DiagnosisResultId).First())
+            .ToList();
+        var top1Correct = latestRows.Count(row => row.ActualFaultType == row.PredictedFaultType);
+        var top3Correct = latestRows.Count(row => DeserializeCandidates(row.CandidateFaultTypes).Contains(row.ActualFaultType));
         return new RagEvaluation(
-            rows.Count,
+            latestRows.Count,
             top1Correct,
             top3Correct,
-            rows.Count == 0 ? 0 : decimal.Round((decimal)top1Correct / rows.Count, 4),
-            rows.Count == 0 ? 0 : decimal.Round((decimal)top3Correct / rows.Count, 4),
-            rows.Count == 0 ? 0 : rows.Average(row => row.DiagnosisDurationMs));
+            latestRows.Count == 0 ? 0 : decimal.Round((decimal)top1Correct / latestRows.Count, 4),
+            latestRows.Count == 0 ? 0 : decimal.Round((decimal)top3Correct / latestRows.Count, 4),
+            latestRows.Count == 0 ? 0 : latestRows.Average(row => row.DiagnosisDurationMs));
     }
 
     public async Task<DiagnosisEvaluation?> GetEvaluationAsync(Guid id, CancellationToken ct)
@@ -61,10 +64,13 @@ public sealed class DiagnosisRepository(FaultDiagnosisDbContext db) : IDiagnosis
                           join record in db.CommunicationRecords on experiment.Id equals record.ExperimentId
                           join diagnosis in db.DiagnosisResults on record.Id equals diagnosis.CommunicationRecordId
                           where diagnosis.DiagnosisMethod == DiagnosisMethod.RuleBased
-                          select new { experiment.ActualFaultType, diagnosis.PredictedFaultType }).ToListAsync(ct);
+                          select new { CommunicationRecordId = record.Id, DiagnosisResultId = diagnosis.Id, diagnosis.CreatedAt, experiment.ActualFaultType, diagnosis.PredictedFaultType }).ToListAsync(ct);
         if (rows.Count == 0 && !await db.Experiments.AnyAsync(experiment => experiment.Id == id, ct)) return null;
-        var correct = rows.Count(row => row.ActualFaultType == row.PredictedFaultType);
-        return new DiagnosisEvaluation(rows.Count, correct, rows.Count == 0 ? 0 : (decimal)correct / rows.Count);
+        var latestRows = rows.GroupBy(row => row.CommunicationRecordId)
+            .Select(group => group.OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.DiagnosisResultId).First())
+            .ToList();
+        var correct = latestRows.Count(row => row.ActualFaultType == row.PredictedFaultType);
+        return new DiagnosisEvaluation(latestRows.Count, correct, latestRows.Count == 0 ? 0 : (decimal)correct / latestRows.Count);
     }
 
     public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);

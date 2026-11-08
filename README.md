@@ -431,6 +431,6 @@ dotnet test tests/IIoT.FaultDiagnosis.UnitTests/IIoT.FaultDiagnosis.UnitTests.cs
 
 ## 待完成的資料收集
 
-目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種（含 `AuthenticationFailed` 與 `TopicMismatch`）與 OPC UA 六種（含 `SessionDisconnected`）。四種 Modbus 情境已完成第一版受控環境 ML baseline，結果與限制見 [docs/ModbusMlBaseline.md](docs/ModbusMlBaseline.md)；MQTT 與 OPC UA 正式資料尚未納入跨協定 ML 訓練。下一步可依 [docs/Dataset.md](docs/Dataset.md) 匯出完成的正式資料並執行跨協定訓練與 Phase 10 RAG 評估。
+目前已完成 15 種各 100 Run 的受控正式情境，共 1,500 個 Experiment Runs 與 3,800 筆通訊紀錄：Modbus TCP 四種、MQTT 五種（含 `AuthenticationFailed` 與 `TopicMismatch`）與 OPC UA 六種（含 `SessionDisconnected`）。跨協定 ML、Rule-based 與本機 RAG 均已完成固定快照評估；完整結果、混淆矩陣與限制見 [docs/FormalDiagnosisEvaluation_20261103.md](docs/FormalDiagnosisEvaluation_20261103.md)。這些結果為受控資料快照的覆蓋與流程驗證，仍須以更多設備、網路條件與未知錯誤情境驗證泛化能力。
 
 截至 2026-11-03 的正式實驗範圍、可追溯的 Experiment ID、統計結果與研究限制，見 [docs/ExperimentReport.md](docs/ExperimentReport.md)。
