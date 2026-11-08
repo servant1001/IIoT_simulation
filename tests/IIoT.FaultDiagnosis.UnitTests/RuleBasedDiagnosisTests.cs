@@ -25,4 +25,13 @@ public sealed class RuleBasedDiagnosisTests
   var result=await engine.DiagnoseAsync(record,CancellationToken.None);
   Assert.Equal(faultType,result.PredictedFaultType); Assert.Equal(DiagnosisMethod.RuleBased,result.DiagnosisMethod);
  }
+
+ [Fact]
+ public async Task DiagnoseAsync_ClassifiesSuccessfulSlowModbusResponseAsNetworkDelay()
+ {
+  var record=new CommunicationRecord(Guid.NewGuid(),Guid.NewGuid(),ProtocolType.ModbusTcp,DateTimeOffset.UtcNow,DateTimeOffset.UtcNow,150,CommunicationStatus.Success,FaultType.None,null,null,null,null,null,DateTimeOffset.UtcNow);
+  var engine=new RuleBasedFaultDiagnosisEngine([new NetworkDelayRule(ProtocolType.ModbusTcp,100,"c","a"),new FaultTypeRule(FaultType.None,"c","a")],TimeProvider.System);
+  var result=await engine.DiagnoseAsync(record,CancellationToken.None);
+  Assert.Equal(FaultType.NetworkDelay,result.PredictedFaultType);
+ }
 }

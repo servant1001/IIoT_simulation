@@ -48,3 +48,16 @@ docker compose --profile ml run --rm ml-lab python ml/train.py --input artifacts
 - `{model}.joblib`：訓練後的 sklearn pipeline。
 
 特徵使用 `protocol`、`status`、`observed_fault_type`、`error_code`、`error_message`、`response_time_ms`、`retry_count`。實驗、設備與紀錄識別碼不會作為模型特徵。
+
+## 未見條件評估
+
+對不屬於正式訓練快照的資料，必須載入既有模型進行 inference，不可先將該資料加入訓練。以下命令會輸出 prediction、confusion matrix 與未知實際類別清單：
+
+```powershell
+docker compose --profile ml run --rm ml-lab python ml/evaluate_unseen.py `
+  --input artifacts/generalization/modbus-network-delay.csv `
+  --model ml/outputs/formal-20261103/logistic_regression.joblib `
+  --output ml/outputs/generalization/modbus-network-delay/logistic_regression
+```
+
+若 `metrics.json` 的 `unseen_actual_fault_types` 包含 `NetworkDelay`，表示該 Ground Truth 未曾參與模型訓練；此時 Accuracy 與 confusion matrix 應被解讀為未知情境辨識能力，而非重新訓練後的效能。

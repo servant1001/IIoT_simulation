@@ -46,6 +46,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | `BrokerUnavailable` | 16 |
 | `TopicMismatch` | 17 |
 | `PayloadInvalid` | 18 |
+| `NetworkDelay` | 19 |
 
 ## 可直接收集的情境
 
@@ -55,6 +56,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | Modbus | `ConnectionRefused` | 停止 `modbus-simulator`，仍連到 port 1502。 | `-ProtocolType 1 -ActualFaultType 1 -TargetHost 127.0.0.1 -Port 1502` |
 | Modbus | `Timeout` | 啟動 `modbus-timeout-simulator`；它接受 TCP 連線但不回覆 Modbus request。 | `-ProtocolType 1 -ActualFaultType 4 -TargetHost 127.0.0.1 -Port 1503` |
 | Modbus | `IllegalAddress` | 啟動 `modbus-illegal-address-simulator`；它會回覆 Modbus Exception Code `02`。 | `-ProtocolType 1 -ActualFaultType 8 -TargetHost 127.0.0.1 -Port 1504` |
+| Modbus | `NetworkDelay`（泛化驗證） | 啟動 `modbus-delay-simulator`；它轉送正常 Modbus 回覆，但依序延遲 150、300、450、600、750 ms。 | `-ProtocolType 1 -ActualFaultType 19 -TargetHost 127.0.0.1 -Port 1505` |
 | OPC UA | `None` | Prosys Server 開啟，使用預設 endpoint 與 `i=2258`。 | `-ProtocolType 2 -ActualFaultType 0 -TargetHost "opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer" -Port 53530` |
 | OPC UA | `InvalidEndpoint` | 設定為不存在的 endpoint path 或已關閉的 endpoint。 | `-ProtocolType 2 -ActualFaultType 12 -TargetHost "opc.tcp://127.0.0.1:53530/invalid" -Port 53530` |
 | OPC UA | `SessionDisconnected` | 啟動 Prosys 與 Session Disconnect Proxy；Proxy 在 Session 建立後關閉 transport。 | `-ProtocolType 2 -ActualFaultType 15 -TargetHost "opc.tcp://127.0.0.1:53532/OPCUA/SimulationServer" -Port 53532 -ProtocolSettingsJson $sessionSettings` |
@@ -106,8 +108,10 @@ docker compose --profile mqtt-simulators up -d mqtt-json-publisher
 
 ```powershell
 docker compose --profile fault-simulators up -d --build `
-  modbus-timeout-simulator modbus-illegal-address-simulator
+  modbus-timeout-simulator modbus-illegal-address-simulator modbus-delay-simulator
 ```
+
+`modbus-delay-simulator` 用於未見網路條件驗證：通訊能成功、Adapter 的 `observed_fault_type` 仍為 `None`，但 Experiment 的 Ground Truth 為 `NetworkDelay`。因此它不應混入 Phase 8 的 15 種正式訓練快照；應獨立保留為泛化評估資料，檢驗診斷方法是否能處理尚未納入規則、知識庫或訓練資料的延遲型態。
 
 啟動 OPC UA Timeout Simulator：
 

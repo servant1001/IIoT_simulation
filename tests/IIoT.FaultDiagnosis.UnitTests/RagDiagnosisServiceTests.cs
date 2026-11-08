@@ -72,6 +72,18 @@ public sealed class RagDiagnosisServiceTests
         Assert.Equal(expectedSourceId, result.First().Article.Id);
     }
 
+    [Fact]
+    public void Search_PrioritizesNetworkDelayForSlowSuccessfulModbusResponse()
+    {
+        var context = new RagRecordContext(Guid.NewGuid(), ProtocolType.ModbusTcp, "127.0.0.1", 1505, CommunicationStatus.Success,
+            FaultType.None, null, null, 150, 0);
+
+        var result = new RagKnowledgeBase().Search(context, 3);
+
+        Assert.Equal(FaultType.NetworkDelay, result.First().Article.FaultType);
+        Assert.Equal("modbus-network-delay", result.First().Article.Id);
+    }
+
     private sealed class MemoryRepository(RagRecordContext? context, IReadOnlyList<RagHistoricalCase> historicalCases) : IRagDiagnosisRepository, IDiagnosisRepository
     {
         public List<DiagnosisResult> SavedResults { get; } = [];

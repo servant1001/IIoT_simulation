@@ -100,6 +100,15 @@ services:
     profiles: ["fault-simulators"]
     ports:
       - "127.0.0.1:1504:502"
+  modbus-delay-simulator:
+    build:
+      context: ./modbus-simulator
+    command: ["python", "modbus_delay_proxy.py"]
+    profiles: ["fault-simulators"]
+    depends_on:
+      - modbus-simulator
+    ports:
+      - "127.0.0.1:1505:502"
   opcua-timeout-simulator:
     build:
       context: ./modbus-simulator

@@ -33,8 +33,9 @@ public static class DependencyInjection
 
     private static void AddFaultRules(IServiceCollection services)
     {
-        var rules = new[]
+        IFaultRule[] rules =
         {
+            new NetworkDelayRule(ProtocolType.ModbusTcp, 100, "A successful Modbus response exceeded the 100 ms laboratory baseline threshold.", "Check network path latency, switch load and PLC response time; compare with a normal baseline before changing timeouts."),
             new FaultTypeRule(FaultType.None, "The communication completed successfully and no protocol fault was observed.", "Continue normal monitoring and retain the successful communication record as a baseline."),
             new FaultTypeRule(FaultType.ConnectionRefused, "The target endpoint refused the TCP connection.", "Confirm host, port, firewall and simulator or PLC availability."),
             new FaultTypeRule(FaultType.Timeout, "The device did not respond before the configured timeout.", "Check device load, network latency and the operation timeout after confirming the request is valid."),

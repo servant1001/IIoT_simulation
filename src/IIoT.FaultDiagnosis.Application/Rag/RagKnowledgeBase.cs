@@ -15,6 +15,10 @@ public sealed class RagKnowledgeBase : IRagKnowledgeBase
             ["none", "success", "completed"],
             ["The Modbus TCP connection and register read completed without a protocol fault."],
             ["Retain this record as a normal baseline.", "Continue monitoring response time and communication availability."]),
+        Article("modbus-network-delay", "Modbus TCP elevated network delay", ProtocolType.ModbusTcp, FaultType.NetworkDelay,
+            ["delay", "latency", "slow response"],
+            ["The Modbus request succeeded but its response time exceeded the configured laboratory baseline.", "Network congestion, switch load or PLC processing delay can increase response time without producing a protocol exception."],
+            ["Compare response time with the normal baseline before changing timeout values.", "Inspect network path latency, switch load and PLC response time."]),
         Article("modbus-connection-refused", "Modbus TCP connection refused", ProtocolType.ModbusTcp, FaultType.ConnectionRefused,
             ["connection refused", "actively refused", "econnrefused"],
             ["The Modbus simulator or PLC is not listening on the configured port.", "A firewall or incorrect endpoint can reject the TCP connection."],
@@ -87,6 +91,15 @@ public sealed class RagKnowledgeBase : IRagKnowledgeBase
         if (article.FaultType == context.ObservedFaultType)
         {
             score += 12;
+        }
+
+        if (article.FaultType == FaultType.NetworkDelay &&
+            context.ProtocolType == ProtocolType.ModbusTcp &&
+            context.Status == CommunicationStatus.Success &&
+            context.ObservedFaultType == FaultType.None &&
+            context.ResponseTimeMs >= 100)
+        {
+            score += 24;
         }
 
         score += article.Keywords.Count(keyword => query.Contains(keyword, StringComparison.OrdinalIgnoreCase)) * 3;
