@@ -98,6 +98,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 - 15 種正式受控情境共 1,500 個 Run、3,800 筆紀錄，並已保存 CSV 資料快照、覆蓋率與 SHA-256。詳見 [FormalDatasetSnapshot_20261103.md](FormalDatasetSnapshot_20261103.md)。
 - 三種診斷方法已完成量化評估：Rule-based 全量 Accuracy 為 100.00%，本機 RAG 的 Top-1／Top-3 Accuracy 均為 100.00%、平均診斷時間 7.09 ms；Run-aware 保留測試上 Logistic Regression 與 Random Forest 均為 100.00% Accuracy／weighted F1，SVM 為 73.08% Accuracy、70.97% weighted F1。完整方法與限制見 [FormalDiagnosisEvaluation_20261103.md](FormalDiagnosisEvaluation_20261103.md)。Rule-based 與 RAG 的滿分代表其完整覆蓋已正規化的受控快照；ML 結果是受控環境的流程驗證與基準，均不可延伸為現場泛化結論。
 - 額外完成兩輪未納入原始訓練快照的 `NetworkDelay` 泛化驗證：G-01 為 100 Run／398 筆、G-02 為不同延遲分布的 100 Run／388 筆。固定的 Rule-based 門檻與 RAG 知識在兩輪皆正確辨識全部紀錄；三個固定 ML 模型皆將資料誤判為 `None`（0%）。此負向結果具體揭露封閉類別模型對未見故障的限制，完整資料、SHA-256 與效度限制見 [GeneralizationExperiments.md](GeneralizationExperiments.md)。
+- 以 G-01 的標註資料重訓後，仍未參與訓練的 G-02 成為獨立 ML 測試：Random Forest 達 388 / 388，Logistic Regression 為 155 / 388，SVM 為 232 / 388。此比較不只呈現最佳結果，也呈現不同模型對延遲特徵的差異與限制；G-02 不再用於調參，後續需以新的資料分布再次驗證。
 - ML 混淆矩陣已保留為 PNG 與 CSV：Logistic Regression、Random Forest 的 26 筆保留測試樣本皆正確分類；SVM 有 7 筆誤判，主要把 `IllegalAddress` 與 `TopicMismatch` 判為 `AuthenticationFailed`。此差異可作為比較模型特徵表現的具體證據。
 - MQTT 五類正式資料（正常、BrokerUnavailable、PayloadInvalid、AuthenticationFailed、TopicMismatch）共 500 個 Run、1,300 筆紀錄；其中 `PayloadInvalid` 的 100 筆紀錄皆由非 JSON 訊息觸發，`AuthenticationFailed` 的 100 筆紀錄由隔離帳密 Broker 回傳 `NotAuthorized` 觸發，`TopicMismatch` 的 300 筆紀錄則由自建 MQTT 5 端點回覆訂閱拒絕 SUBACK 觸發。這些資料已納入本次跨協定 ML、Rule-based 與 RAG 評估。
 - OPC UA 正常情境正式實驗 `OPCUA_NORMAL_100RUN_20261028` 已完成 100 個 Run、400 筆成功讀取、0 次失敗或逾時；使用本機 Prosys OPC UA Simulation Server、endpoint `opc.tcp://localhost:53530/OPCUA/SimulationServer` 與 NodeId `i=2258`。
@@ -135,7 +136,7 @@ Docker Compose 管理 PostgreSQL、Seq、Mosquitto、ML 與自建 Modbus Simulat
 
 ### 可用於書審的實驗結論
 
-> 本專案已完成 15 種 IIoT 通訊受控情境、1,500 個 Experiment Run 與 3,800 筆通訊紀錄的正式資料收集，並以 Rule-based、Machine Learning 與 RAG 三種方法進行診斷評估。Rule-based 與本機 RAG 在此固定受控快照均完整覆蓋所有情境，並分別提供可追溯規則與知識來源；機器學習在以 Run 為單位分割的受控保留資料上展現良好分類效果。進一步的兩輪獨立 `NetworkDelay` 實驗則發現，未含該類別的既有 ML 模型會全部誤判為正常，而固定的延遲規則與 RAG 知識可穩定辨識。這些正向與負向結果共同支持本平台作為 IIoT 故障診斷研究基礎，並明確指出下一步應研究 Unknown 偵測、不同設備、網路條件與跨協定泛化能力。
+> 本專案已完成 15 種 IIoT 通訊受控情境、1,500 個 Experiment Run 與 3,800 筆通訊紀錄的正式資料收集，並以 Rule-based、Machine Learning 與 RAG 三種方法進行診斷評估。Rule-based 與本機 RAG 在此固定受控快照均完整覆蓋所有情境，並分別提供可追溯規則與知識來源；機器學習在以 Run 為單位分割的受控保留資料上展現良好分類效果。進一步的兩輪獨立 `NetworkDelay` 實驗發現，未含該類別的既有 ML 模型會全部誤判為正常；使用第一輪標註資料重訓後，Random Forest 在未參與訓練的第二輪資料達完整辨識，而其他模型仍有明顯漏判。這些正向與負向結果共同支持本平台作為 IIoT 故障診斷研究基礎，並明確指出下一步應研究 Unknown 偵測、不同設備、網路條件與跨協定泛化能力。
 
 ## 可放入自傳或讀書計畫的段落
 

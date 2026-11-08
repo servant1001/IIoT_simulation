@@ -103,6 +103,34 @@ ML 的可重現輸出、混淆矩陣與 metrics 存於 `ml/outputs/generalizatio
 
 G-02 支持「G-01 建立的 100 ms 規則與 RAG 知識，可在新的、較高且不同分布的延遲序列中穩定工作」；但它仍是同一協定、同一 TCP Proxy 與所有值皆高於門檻的受控驗證。它不能證明跨協定、接近門檻（例如 80–120 ms）或真實工廠網路下的泛化能力。兩次實驗也一致指出：封閉集合 ML 對未出現在訓練類別的故障會錯誤地自信預測 `None`，應在後續導入 Unknown／拒答機制與跨協定資料。
 
+## G-03：新增標註資料後的 ML 獨立驗證
+
+G-03 回答的不是「未見類別能否直接辨識」，而是「取得 G-01 的標註資料並重新訓練後，模型能否辨識未參與訓練的 G-02 資料」。訓練前已明確排除 G-02；合併工具會保存來源 hash、Experiment ID 與 Run 數，確保資料來源可稽核。
+
+| 項目 | 設計／結果 |
+| --- | --- |
+| 訓練輸入 | 原正式快照 3,800 records／1,500 runs，加上 G-01 398 records／100 runs。 |
+| 訓練輸入 hash | `9CCB43A00246850D45447BECA7B15854B47D4817F67195A675C523153E3838F2`。 |
+| 訓練規模 | 4,198 records、1,600 runs、13 個 `actual_fault_type`，包含 398 筆 `NetworkDelay`。 |
+| 排除資料 | G-02 的 388 records／100 runs 未出現在合併快照、Run-aware split、訓練或模型選擇中。 |
+| Run-aware split | Train 4,143、Validation 29、Test 26 records；同一個 Run 不會跨集合。 |
+| 訓練產物 | `ml/outputs/networkdelay-v1-20261108/`。 |
+| 外部測試產物 | `ml/outputs/generalization/modbus-network-delay-g02-retrained/`。 |
+
+### G-03 模型結果
+
+| 模型 | 內部 Run-aware Test | 對 G-02 的獨立結果 | G-02 混淆情形 |
+| --- | --- | --- | --- |
+| Logistic Regression | Accuracy 88.46%；`NetworkDelay` recall 25.00%（support 4）。 | 155 / 388，39.95%。 | `NetworkDelay` 155、`None` 233。 |
+| Random Forest | Accuracy 100.00%；`NetworkDelay` precision／recall 皆 100.00%（support 4）。 | 388 / 388，100.00%。 | 全部預測 `NetworkDelay`。 |
+| SVM | Accuracy 42.31%；`NetworkDelay` recall 50.00%（support 4）。 | 232 / 388，59.79%。 | `NetworkDelay` 232、`None` 156。 |
+
+相較於改善前的三個模型在 G-02 均為 0 / 388，G-03 證明新增標註的 `NetworkDelay` 資料能讓模型學得該類別；其中 Random Forest 在這個獨立資料集達到完整辨識。Logistic Regression 主要僅將約 642 ms 以上的回覆判為延遲，SVM 主要在約 415 ms 以上才判為延遲，因此兩者仍把較低延遲的成功回覆誤判為 `None`。
+
+### G-03 效度限制
+
+Random Forest 的 100% 是一次保留的、同協定 TCP Proxy 延遲分布結果，不能據此宣稱已適用真實工廠或不同協定；內部 test 中 `NetworkDelay` 僅含 4 筆紀錄，也不適合單獨作為強泛化證據。G-02 在本輪結果公布後不應再被用來調整 Random Forest 超參數或特徵；下一輪應建立新的 G-04 延遲分布與跨協定資料，並評估 Unknown／拒答策略。
+
 ## 評估原則
 
 1. 固定訓練快照不加入本實驗資料；ML 不可在尚未評估前以 `NetworkDelay` 資料重新訓練。

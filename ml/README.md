@@ -61,3 +61,24 @@ docker compose --profile ml run --rm ml-lab python ml/evaluate_unseen.py `
 ```
 
 若 `metrics.json` 的 `unseen_actual_fault_types` 包含 `NetworkDelay`，表示該 Ground Truth 未曾參與模型訓練；此時 Accuracy 與 confusion matrix 應被解讀為未知情境辨識能力，而非重新訓練後的效能。
+
+## G-03：以 G-01 訓練、以 G-02 獨立測試
+
+`NetworkDelay` 的 G-01 資料可作為新增類別的訓練來源；G-02 必須永久排除於合併、分割與模型選擇，僅在新版模型完成後做一次獨立測試。先建立含來源 SHA-256 的合併快照：
+
+```powershell
+docker compose --profile ml run --rm -e PYTHONDONTWRITEBYTECODE=1 ml-lab python ml/merge_datasets.py `
+  --input artifacts/datasets/formal-20261103/iiot-fault-dataset.csv `
+  --input artifacts/generalization/modbus-network-delay-20261108/dataset.csv `
+  --output artifacts/training/networkdelay-v1-20261108/iiot-fault-dataset.csv
+```
+
+接著以合併快照訓練；每一類皆保有至少 100 個 Run，故此訓練不是 exploratory run：
+
+```powershell
+docker compose --profile ml run --rm -e PYTHONDONTWRITEBYTECODE=1 ml-lab python ml/train.py `
+  --input artifacts/training/networkdelay-v1-20261108/iiot-fault-dataset.csv `
+  --output ml/outputs/networkdelay-v1-20261108
+```
+
+最後只對 G-02 執行 `evaluate_unseen.py`。此時 `NetworkDelay` 已是模型類別，G-02 評估的是新增標註資料後的獨立泛化，而不是未見類別能力。
