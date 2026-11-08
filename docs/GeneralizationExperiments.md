@@ -131,6 +131,36 @@ G-03 回答的不是「未見類別能否直接辨識」，而是「取得 G-01 
 
 Random Forest 的 100% 是一次保留的、同協定 TCP Proxy 延遲分布結果，不能據此宣稱已適用真實工廠或不同協定；內部 test 中 `NetworkDelay` 僅含 4 筆紀錄，也不適合單獨作為強泛化證據。G-02 在本輪結果公布後不應再被用來調整 Random Forest 超參數或特徵；下一輪應建立新的 G-04 延遲分布與跨協定資料，並評估 Unknown／拒答策略。
 
+## G-04：接近 Rule 門檻的獨立延遲驗證
+
+G-04 在 G-03 模型已凍結後，以新的延遲序列 `70、90、110、200、400 ms` 檢驗接近 100 ms Rule-based 門檻的情況。所有資料的 Ground Truth 均為 `NetworkDelay`，因為每次回覆皆由 Proxy 主動注入顯著高於正常基準（約 30 ms）的延遲；100 ms 只是既有 Rule/RAG 的判斷門檻，並非 Ground Truth 的定義。
+
+| 項目 | 設計／結果 |
+| --- | --- |
+| 小型驗證 | `MODBUS_NETWORK_DELAY_G04_001_VALIDATION_20261108`，Experiment ID `11dce9b8-afeb-48ce-870e-e2cae0fa70b5`；1 / 1 Completed、5 records，回應時間 105.97、93.93、113.97、204.29、403.28 ms。 |
+| 正式 Experiment | `MODBUS_NETWORK_DELAY_G04_100RUN_20261108`，Experiment ID `b9d26a84-e69d-4d03-a7b3-ae3c961a2a7b`。 |
+| 正式收集 | 100 / 100 Completed、500 records；全部為 `Success` 且 `observed_fault_type = None`。 |
+| Response Time | 最小 72.26 ms、平均 177.68 ms、最大 406.60 ms。 |
+| Dataset CSV | `artifacts/generalization/modbus-network-delay-g04-20261108/dataset.csv`（500 rows，SHA-256：`AA02B74EC8C08AC87968FA5CD5592965534EFD21F96ED3924E9B6A3CAF8EA39C`）。 |
+| Coverage | 100 runs / 500 records / 500 diagnosed，`remainingRunCount = 0`。 |
+| 凍結條件 | 沿用 G-03 的 Rule、RAG 與三個已訓練模型；G-04 不參與訓練或調參。 |
+
+### G-04 邊界結果
+
+| 方法 | 正確數／總數 | Accuracy | 觀察 |
+| --- | ---: | ---: | --- |
+| Rule-based | 300 / 500 | 60.00% | 實測低於 100 ms 的 70／90 ms 注入延遲被判為 `None`。 |
+| RAG | Top-1、Top-3 均 300 / 500 | 60.00% | 使用同一 100 ms 檢索門檻；平均診斷時間 3.08 ms。 |
+| Logistic Regression | 0 / 500 | 0.00% | 全部預測 `None`；G-04 的最高回應時間仍低於其在 G-02 顯示的高延遲判斷區域。 |
+| Random Forest | 400 / 500 | 80.00% | 72.26–79.62 ms 的 100 筆預測 `None`；92.64–406.60 ms 的 400 筆預測 `NetworkDelay`。 |
+| SVM | 100 / 500 | 20.00% | 僅 402.92–406.60 ms 的 100 筆預測 `NetworkDelay`，其餘預測 `None`。 |
+
+### G-04 結論與限制
+
+G-04 推翻「Random Forest 在所有延遲條件下均為 100%」的過度推論：它在 G-02 的較高延遲資料完整辨識，但對本輪最低延遲區間漏判 100 筆。Rule-based 與 RAG 的 60% 則直接反映固定 100 ms 門檻的設計取捨，而不是資料收集失敗。
+
+此結果使研究結論更具可信度：不同方法在延遲邊界呈現不同敏感度；目前最合理的後續工作不是依 G-04 再微調門檻或模型，而是以 G-04 保持為已報告的獨立結果，建立新的故障型態資料，並研究 Unknown／拒答機制與成本敏感的告警門檻。
+
 ## 評估原則
 
 1. 固定訓練快照不加入本實驗資料；ML 不可在尚未評估前以 `NetworkDelay` 資料重新訓練。

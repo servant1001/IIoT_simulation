@@ -82,3 +82,5 @@ docker compose --profile ml run --rm -e PYTHONDONTWRITEBYTECODE=1 ml-lab python 
 ```
 
 最後只對 G-02 執行 `evaluate_unseen.py`。此時 `NetworkDelay` 已是模型類別，G-02 評估的是新增標註資料後的獨立泛化，而不是未見類別能力。
+
+G-04 是後續的近門檻獨立測試資料，僅能對已凍結的 G-03 模型做 inference；不可回填至上述訓練快照或用來調整模型與延遲門檻。其實際結果與限制保存在 `docs/GeneralizationExperiments.md`。
