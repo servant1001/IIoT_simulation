@@ -48,6 +48,15 @@ public sealed class ModbusProtocolAdapterTests
         Assert.Equal("ConnectionRefused", fault.ErrorCode);
     }
 
+    [Fact]
+    public void Normalize_MapsSocketConnectionAbortedToConnectionLost()
+    {
+        var fault = ModbusFaultNormalizer.Normalize(new SocketException((int)SocketError.ConnectionAborted));
+
+        Assert.Equal(FaultType.ConnectionLost, fault.FaultType);
+        Assert.Equal("ConnectionAborted", fault.ErrorCode);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(126)]

@@ -12,6 +12,8 @@
 
 G-05 新增 Unknown／人工確認護欄：未映射的 Modbus Exception Code 03 在 closed-set ML 中被錯誤指派為既有故障；保留 Adapter 的 `Unknown` 訊號後，open-set 評估可將 200 / 200 筆資料正確交由人工確認，而非誤判為正常或已知故障。
 
+G-06 以未受訓、但 Adapter 已正規化為 `ConnectionLost` 的 TCP 重設情境驗證純信心門檻：Logistic Regression 與 Random Forest 均攔下 100 / 100 筆資料，SVM 則無法攔下。詳情與限制見 `docs/GeneralizationExperiments.md`。
+
 ## 專案進度
 
 | 階段 | 狀態 | 內容 |

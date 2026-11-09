@@ -95,6 +95,7 @@ def main() -> int:
     output["open_set_is_correct"] = output[TARGET_COLUMN] == output["open_set_prediction"]
 
     expected_unknown = output[TARGET_COLUMN].astype(str).eq(UNKNOWN_LABEL) | ~output[TARGET_COLUMN].isin(known_classes)
+    output["open_set_expected_label"] = np.where(expected_unknown, UNKNOWN_LABEL, output[TARGET_COLUMN])
     true_positive = int((review_required & expected_unknown.to_numpy()).sum())
     false_positive = int((review_required & ~expected_unknown.to_numpy()).sum())
     false_negative = int((~review_required & expected_unknown.to_numpy()).sum())
@@ -115,7 +116,7 @@ def main() -> int:
         "calibration_record_count": len(calibration_split.validation),
         "model_classes": sorted(known_classes),
         "closed_set_accuracy": accuracy_score(output[TARGET_COLUMN], closed_prediction),
-        "open_set_accuracy": accuracy_score(output[TARGET_COLUMN], open_prediction),
+        "open_set_accuracy": accuracy_score(output["open_set_expected_label"], open_prediction),
         "review_required_count": int(review_required.sum()),
         "unknown_reason_counts": output["unknown_reason"].value_counts().sort_index().to_dict(),
         "unknown_detection": {
@@ -126,7 +127,7 @@ def main() -> int:
             "recall": recall,
         },
         "closed_set_report": classification_report(output[TARGET_COLUMN], closed_prediction, output_dict=True, zero_division=0),
-        "open_set_report": classification_report(output[TARGET_COLUMN], open_prediction, output_dict=True, zero_division=0),
+        "open_set_report": classification_report(output["open_set_expected_label"], open_prediction, output_dict=True, zero_division=0),
     }
     (arguments.output / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
     print(f"Open-set evaluated {len(output)} records. Results: {arguments.output.resolve()}")

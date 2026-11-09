@@ -36,6 +36,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | --- | ---: |
 | `None` | 0 |
 | `ConnectionRefused` | 1 |
+| `ConnectionLost` | 3 |
 | `Timeout` | 4 |
 | `AuthenticationFailed` | 6 |
 | `IllegalAddress` | 8 |
@@ -59,6 +60,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/experiments/{ExperimentId}/records"
 | Modbus | `IllegalAddress` | 啟動 `modbus-illegal-address-simulator`；它會回覆 Modbus Exception Code `02`。 | `-ProtocolType 1 -ActualFaultType 8 -TargetHost 127.0.0.1 -Port 1504` |
 | Modbus | `NetworkDelay`（泛化驗證） | 啟動 `modbus-delay-simulator`；它轉送正常 Modbus 回覆，但依序延遲 150、300、450、600、750 ms。 | `-ProtocolType 1 -ActualFaultType 19 -TargetHost 127.0.0.1 -Port 1505` |
 | Modbus | `Unknown`（開放集合驗證） | 啟動 `modbus-unknown-exception-simulator`；它回覆未映射的 Modbus Exception Code `03`。 | `-ProtocolType 1 -ActualFaultType 22 -TargetHost 127.0.0.1 -Port 1506` |
+| Modbus | `ConnectionLost`（信心門檻驗證） | 啟動 `modbus-connection-reset-simulator`；它接受連線後以 TCP RST 中止，Adapter 正規化為 `ConnectionLost`。 | `-ProtocolType 1 -ActualFaultType 3 -TargetHost 127.0.0.1 -Port 1507` |
 | OPC UA | `None` | Prosys Server 開啟，使用預設 endpoint 與 `i=2258`。 | `-ProtocolType 2 -ActualFaultType 0 -TargetHost "opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer" -Port 53530` |
 | OPC UA | `InvalidEndpoint` | 設定為不存在的 endpoint path 或已關閉的 endpoint。 | `-ProtocolType 2 -ActualFaultType 12 -TargetHost "opc.tcp://127.0.0.1:53530/invalid" -Port 53530` |
 | OPC UA | `SessionDisconnected` | 啟動 Prosys 與 Session Disconnect Proxy；Proxy 在 Session 建立後關閉 transport。 | `-ProtocolType 2 -ActualFaultType 15 -TargetHost "opc.tcp://127.0.0.1:53532/OPCUA/SimulationServer" -Port 53532 -ProtocolSettingsJson $sessionSettings` |

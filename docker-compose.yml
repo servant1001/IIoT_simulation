@@ -107,6 +107,13 @@ services:
     profiles: ["fault-simulators"]
     ports:
       - "127.0.0.1:1506:502"
+  modbus-connection-reset-simulator:
+    build:
+      context: ./modbus-simulator
+    command: ["python", "connection_reset_server.py"]
+    profiles: ["fault-simulators"]
+    ports:
+      - "127.0.0.1:1507:502"
   modbus-delay-simulator:
     build:
       context: ./modbus-simulator

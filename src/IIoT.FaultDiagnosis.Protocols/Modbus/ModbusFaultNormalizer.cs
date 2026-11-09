@@ -43,7 +43,7 @@ public static class ModbusFaultNormalizer
             SocketError.ConnectionRefused => new ModbusFault(FaultType.ConnectionRefused, nameof(SocketError.ConnectionRefused)),
             SocketError.ConnectionReset => new ModbusFault(FaultType.ConnectionReset, nameof(SocketError.ConnectionReset)),
             SocketError.TimedOut => new ModbusFault(FaultType.Timeout, nameof(SocketError.TimedOut)),
-            SocketError.HostNotFound or SocketError.HostUnreachable or SocketError.NetworkUnreachable =>
+            SocketError.ConnectionAborted or SocketError.HostNotFound or SocketError.HostUnreachable or SocketError.NetworkUnreachable =>
                 new ModbusFault(FaultType.ConnectionLost, exception.SocketErrorCode.ToString()),
             _ => new ModbusFault(FaultType.Unknown, exception.SocketErrorCode.ToString())
         };

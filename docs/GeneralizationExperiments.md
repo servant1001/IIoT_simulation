@@ -187,6 +187,20 @@ open-set 評估會以 G-03 合併快照的 Run-aware validation split 校準每�
 
 G-05 證明安全護欄可避免 closed-set ML 把 Adapter 已明確標示的未知協定例外錯誤歸類為既有故障，並把處置轉為人工確認。這不是「模型自行發現所有未知故障」的證明：本輪 100% 主要來自 Adapter 提供的 `Unknown` 訊號。後續應加入不被 Adapter 標示為 Unknown、但特徵分布偏離訓練資料的情境，才能單獨衡量信心門檻的 OOD 偵測能力。
 
+## G-06：僅以信心門檻偵測未見 ConnectionLost
+
+G-06 的 `modbus-connection-reset-simulator` 會接受 TCP 連線後以 RST 中止連線。Windows 將此事件回報為 `ConnectionAborted`，Adapter 已正規化為 `ConnectionLost`；此類別不在 G-03 模型訓練集合，也不是 Adapter `Unknown`。
+
+| 項目 | 結果 |
+| --- | --- |
+| 正式 Experiment | `MODBUS_CONNECTION_LOST_G06_100RUN_20261109`，ID `cb86f6f8-1dd6-4a4b-8bf4-ed269654565b`。 |
+| 收集結果 | 100 / 100 Completed、100 records；Ground Truth／觀測皆為 `ConnectionLost`，error code 為 `ConnectionAborted`。 |
+| Dataset | `artifacts/generalization/modbus-connection-lost-g06-20261109/dataset.csv`，SHA-256：`4103105292597633D5E59DC753ADD79E655346ABF1B6078E0DF15495D66D45D0`。 |
+| closed-set 結果 | Logistic Regression：79 `IllegalAddress`、21 `ConnectionRefused`；Random Forest：100 `AuthenticationFailed`；SVM：100 `PayloadInvalid`。皆為 0% 正確。 |
+| confidence-only open-set | Logistic Regression、Random Forest 均低信心攔下 100 / 100，轉為 `Unknown`／人工確認；SVM 攔下 0 / 100。 |
+
+G-06 證實信心門檻可在**沒有 Adapter Unknown 訊號**時保護 Logistic Regression 與 Random Forest，卻不保證所有模型都有效；SVM 的 margin 在此情境仍過高，因此不能將它作為 Unknown 偵測器。open-set 指標將所有不在模型類別中的 Ground Truth 視為正確目標 `Unknown`，避免以 `ConnectionLost` 對 `Unknown` 直接比較造成錯誤的 0% 評分。
+
 ## 評估原則
 
 1. 固定訓練快照不加入本實驗資料；ML 不可在尚未評估前以 `NetworkDelay` 資料重新訓練。
